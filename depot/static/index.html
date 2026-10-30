@@ -52,7 +52,7 @@
   <div class="card" id="packages"><p class="muted">Loading packages…</p></div>
 </main>
 <script>
-  // 复制源地址；剪贴板接口不可用时退回到选中文本 + execCommand
+  // Copy the repo URL; fall back to selecting the text + execCommand when the Clipboard API is unavailable
   document.querySelector('.copy').addEventListener('click', async (e) => {
     const button = e.currentTarget
     const text = document.getElementById('source-url').textContent
@@ -75,13 +75,13 @@
     }, 1500)
   })
 
-  // 列出源里的插件（读取公开的 /api/v1/packages）
+  // List the packages in the repo (from the public /api/v1/packages)
   fetch('/api/v1/packages')
     .then((r) => r.json())
     .then((list) => {
       const box = document.getElementById('packages')
       if (!list.length) { box.innerHTML = '<p class="muted">No packages yet.</p>'; return }
-      // iPhone / iPad 上包名链接到 Sileo；其他设备只显示文字
+      // On iPhone / iPad, package names link to Sileo; other devices just show text
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
       const ul = document.createElement('ul')
       for (const item of list) {

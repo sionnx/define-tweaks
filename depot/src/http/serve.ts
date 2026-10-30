@@ -1,7 +1,7 @@
 import type { Env } from '../env'
 
-// 源文件读取：直接从 R2 返回，支持 HEAD、ETag/304、Range/206
-// 静态页面（首页、CydiaIcon.png 等）由 Workers Static Assets 在进入 Worker 前直接处理
+// Repo file reads: served straight from R2, with HEAD, ETag/304 and Range/206 support.
+// Static pages (landing page, CydiaIcon.png, …) are served by Workers Static Assets before reaching the Worker
 
 const CONTENT_TYPES: Record<string, string> = {
   deb: 'application/vnd.debian.binary-package',
@@ -15,7 +15,7 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 export function cacheControl(key: string): string {
-  // 文件名包含版本号或内容哈希，永不变化
+  // File names contain a version or a content hash, so they never change
   if (key.startsWith('pool/') || key.startsWith('assets/')) return 'public, max-age=31536000, immutable'
   if (key.startsWith('depictions/')) return 'public, max-age=300'
   return 'public, max-age=60, must-revalidate'
@@ -29,7 +29,7 @@ export async function serve(req: Request, env: Env, ctx: ExecutionContext): Prom
   const key = decodeURIComponent(new URL(req.url).pathname.slice(1))
   if (!key || key.endsWith('/') || key.split('/').includes('..')) return notFound()
 
-  // 不可变文件走边缘缓存；索引文件每次读 R2，保证发布后立即可见
+  // Immutable files use the edge cache; index files are always read from R2 so releases show up immediately
   const cacheable = req.method === 'GET' && !req.headers.has('Range') && cacheControl(key).includes('immutable')
   const cache = caches.default
   if (cacheable) {
@@ -51,7 +51,7 @@ export async function serve(req: Request, env: Env, ctx: ExecutionContext): Prom
   headers.set('Accept-Ranges', 'bytes')
   headers.set('Access-Control-Allow-Origin', '*')
 
-  // 条件请求未满足：有 If-None-Match / If-Modified-Since 时返回 304，否则是 If-Match 类失败返回 412
+  // Conditional request not satisfied: 304 for If-None-Match / If-Modified-Since, otherwise an If-Match style failure → 412
   if (!('body' in object)) {
     const notModified = req.headers.has('If-None-Match') || req.headers.has('If-Modified-Since')
     return new Response(null, { status: notModified ? 304 : 412, headers })

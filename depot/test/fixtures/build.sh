@@ -1,13 +1,13 @@
 #!/bin/sh
-# 重新生成测试用 deb 样本（需要 dpkg-deb）。
-# 样本只含占位文件，不含真实编译产物；--root-owner-group 避免把本机用户名写进 tar 头。
+# Regenerate the test fixture debs (requires dpkg-deb).
+# Fixtures contain only placeholder files, never real build output; --root-owner-group keeps the local user name out of tar headers.
 set -eu
 
 cd "$(dirname "$0")"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# build <输出文件> <data 压缩> <control 内容> [rootless]
+# build <output file> <data compression> <control contents> [rootless]
 build() {
   out=$1 compression=$2 control=$3 prefix=${4:+/var/jb}
   root="$work/$out"

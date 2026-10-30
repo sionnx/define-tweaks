@@ -4,10 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
-  // 首页、CydiaIcon.png、sileo-featured.json 等静态文件，命中时不进入 Worker
+  // Static files (landing page, CydiaIcon.png, sileo-featured.json); matches are served without invoking the Worker
   "assets": { "directory": "./static", "binding": "ASSETS" },
 
-  // 正式环境：apt.define.to
+  // Production: apt.define.to
   "routes": [{ "pattern": "apt.define.to", "custom_domain": true }],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "define-apt" }],
   "durable_objects": {
@@ -19,14 +19,14 @@
     "REPO_LABEL": "Define",
     "REPO_DESCRIPTION": "Define tweaks",
     "OIDC_AUDIENCE": "apt.define.to",
-    // 允许通过 GitHub Actions OIDC 发布的仓库，逗号分隔
+    // Repositories allowed to publish via GitHub Actions OIDC, comma-separated
     "OIDC_REPOS": "sionnx/define-tweaks",
     "MAX_DEB_SIZE": "67108864"
   },
-  // ADMIN_TOKEN 通过 `wrangler secret put ADMIN_TOKEN` 设置，本地放在 .dev.vars
+  // ADMIN_TOKEN is set with `wrangler secret put ADMIN_TOKEN`; locally it lives in .dev.vars
 
   "env": {
-    // 预发布环境：apt-staging.define.to
+    // Staging: apt-staging.define.to
     "staging": {
       "routes": [{ "pattern": "apt-staging.define.to", "custom_domain": true }],
       "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "define-apt-staging" }],

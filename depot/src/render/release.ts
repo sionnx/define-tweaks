@@ -6,7 +6,7 @@ export interface IndexFile {
   bytes: Uint8Array
 }
 
-// 生成 flat repo 的 Release，列出各索引文件的大小与哈希
+// Build the flat repo Release file, listing the size and hashes of each index file
 export async function renderRelease(files: IndexFile[], config: RepoConfig, date = new Date()): Promise<string> {
   const sums = await Promise.all(files.map(async (f) => ({ name: f.name, ...(await digest(f.bytes)) })))
   const section = (title: string, key: 'md5' | 'sha1' | 'sha256') =>

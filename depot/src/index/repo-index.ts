@@ -4,7 +4,8 @@ import { type Env, type PackageMeta, type PackageRecord, repoConfig } from '../e
 import { migrate } from './schema'
 import { SNAPSHOT_KEEP, buildSnapshot, deleteSnapshots, writeDepictions, writeSnapshot } from './snapshot'
 
-// 全局只有一个实例（名为 "main"），所有写操作在这里串行执行，避免并发发布互相覆盖索引
+// There is a single global instance (named "main"). All writes are serialized here so concurrent
+// releases never overwrite each other's index
 
 export type Result<T> = { ok: true; value: T } | { ok: false; status: 404 | 409; detail: string }
 
@@ -47,14 +48,14 @@ export class RepoIndex extends DurableObject<Env> {
     ctx.blockConcurrencyWhile(async () => migrate(this.sql))
   }
 
-  // 发布一个已写入 R2 的 deb；同一文件重复发布视为幂等操作
+  // Publish a deb already written to R2; publishing the same file again is idempotent
   async publish(record: PackageRecord, options: { force?: boolean } = {}): Promise<Result<PublishResult>> {
     const existing = this.findRecord(record.package, record.version, record.arch)
     if (existing && !existing.yanked && existing.sha256 === record.sha256) {
       return { ok: true, value: { gen: this.currentGen(), created: false, record: existing } }
     }
     if (existing && existing.sha256 !== record.sha256 && !options.force) {
-      return { ok: false, status: 409, detail: `${label(record)} 已存在且内容不同` }
+      return { ok: false, status: 409, detail: `${label(record)} already exists with different content` }
     }
 
     this.sql.exec(
@@ -70,7 +71,7 @@ export class RepoIndex extends DurableObject<Env> {
       record.sha1,
       record.sha256,
       JSON.stringify(record.control),
-      // 内容相同的重新上架保留原 changelog
+      // Re-listing identical content keeps the original changelog
       record.changelog ?? existing?.changelog ?? null,
       record.publishedAt,
       record.actor,
@@ -80,14 +81,14 @@ export class RepoIndex extends DurableObject<Env> {
     return { ok: true, value: { gen, created: true, record: this.findRecord(record.package, record.version, record.arch)! } }
   }
 
-  // 下架：从索引中移除；purge 时同时删除记录和 R2 文件
+  // Yank: remove from the index; purge also deletes the records and the R2 files
   async yank(
     pkg: string,
     version: string,
     options: { arch?: string; purge?: boolean; actor: string },
   ): Promise<Result<{ gen: number; removed: string[] }>> {
     const rows = this.records({ package: pkg, version, arch: options.arch, includeYanked: true })
-    if (rows.length === 0) return { ok: false, status: 404, detail: `找不到 ${pkg} ${version}` }
+    if (rows.length === 0) return { ok: false, status: 404, detail: `${pkg} ${version} not found` }
 
     for (const r of rows) {
       if (options.purge) {
@@ -105,7 +106,7 @@ export class RepoIndex extends DurableObject<Env> {
 
   async setMeta(pkg: string, patch: Omit<PackageMeta, 'package' | 'updatedAt'>, actor: string): Promise<Result<PackageMeta>> {
     if (this.records({ package: pkg, includeYanked: true }).length === 0) {
-      return { ok: false, status: 404, detail: `找不到包 ${pkg}` }
+      return { ok: false, status: 404, detail: `Package ${pkg} not found` }
     }
     const merged: PackageMeta = { ...this.meta().get(pkg), ...patch, package: pkg, updatedAt: Date.now() }
     this.sql.exec(
@@ -119,7 +120,7 @@ export class RepoIndex extends DurableObject<Env> {
     return { ok: true, value: merged }
   }
 
-  // 每个包的最新在架版本
+  // Latest listed version of each package
   async listPackages(): Promise<{ package: string; latest: PackageRecord; meta?: PackageMeta }[]> {
     const meta = this.meta()
     const latest = new Map<string, PackageRecord>()
@@ -132,7 +133,7 @@ export class RepoIndex extends DurableObject<Env> {
 
   async getPackage(pkg: string): Promise<Result<{ meta?: PackageMeta; versions: PackageRecord[] }>> {
     const versions = this.records({ package: pkg, includeYanked: true })
-    if (versions.length === 0) return { ok: false, status: 404, detail: `找不到包 ${pkg}` }
+    if (versions.length === 0) return { ok: false, status: 404, detail: `Package ${pkg} not found` }
     return { ok: true, value: { meta: this.meta().get(pkg), versions } }
   }
 
@@ -151,10 +152,10 @@ export class RepoIndex extends DurableObject<Env> {
       }))
   }
 
-  // 回滚：把在架版本恢复成快照 gen 时的集合，然后生成一个新快照
+  // Rollback: restore the set of listed versions to snapshot gen, then create a new snapshot
   async rollback(gen: number, actor: string): Promise<Result<{ gen: number }>> {
     const row = this.sql.exec<{ entries: string }>('SELECT entries FROM snapshots WHERE gen = ?', gen).toArray()[0]
-    if (!row) return { ok: false, status: 404, detail: `找不到快照 ${gen}` }
+    if (!row) return { ok: false, status: 404, detail: `Snapshot ${gen} not found` }
 
     const wanted = new Set(JSON.parse(row.entries) as string[])
     for (const r of this.records({ includeYanked: true })) {
@@ -170,13 +171,13 @@ export class RepoIndex extends DurableObject<Env> {
     return { ok: true, value: { gen: await this.rebuild(`rollback to ${gen}`) } }
   }
 
-  // 手动全量重建（API 调用）
+  // Manual full rebuild (from the API)
   async rebuildManually(actor: string): Promise<{ gen: number }> {
     this.audit(actor, 'rebuild', 'index')
     return { gen: await this.rebuild('manual rebuild') }
   }
 
-  // 根据当前数据库重新生成全部索引与描述页，返回新快照编号
+  // Regenerate every index file and depiction from the database; returns the new snapshot number
   private async rebuild(reason: string): Promise<number> {
     const config = repoConfig(this.env)
     const records = this.records()
@@ -195,7 +196,7 @@ export class RepoIndex extends DurableObject<Env> {
       snapshot.packagesSha256,
     )
 
-    // 只保留最近 SNAPSHOT_KEEP 份快照
+    // Keep only the latest SNAPSHOT_KEEP snapshots
     const stale = this.sql
       .exec<{ gen: number }>('SELECT gen FROM snapshots ORDER BY gen DESC LIMIT -1 OFFSET ?', SNAPSHOT_KEEP)
       .toArray()

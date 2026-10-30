@@ -46,18 +46,18 @@ const metaPatch = z
   .partial()
   .strict()
 
-// 校验失败统一输出 problem+json
+// Validation failures are always reported as problem+json
 const validate = <T extends z.ZodType, K extends 'query' | 'json' | 'param'>(target: K, schema: T) =>
   zValidator(target, schema, (result) => {
     if (!result.success) {
-      throw problem(400, 'invalid-request', result.error.issues.map((i) => `${i.path.join('.') || target}: ${i.message}`).join('；'))
+      throw problem(400, 'invalid-request', result.error.issues.map((i) => `${i.path.join('.') || target}: ${i.message}`).join('; '))
     }
   })
 
 export const api = new Hono<AppEnv>()
   .basePath('/api/v1')
 
-  // 上传原始 deb（请求体即文件）
+  // Upload a raw deb (the request body is the file)
   .put('/packages', requireScope('publish'), validate('query', publishQuery), async (c) => {
     const query = c.req.valid('query')
     const bytes = await readBody(c.req.raw, maxDebSize(c.env), 'deb')
@@ -65,7 +65,7 @@ export const api = new Hono<AppEnv>()
     return c.json(result, result.created ? 201 : 200)
   })
 
-  // multipart 上传：deb 文件 + 可选的 changelog 与 meta(JSON)
+  // Multipart upload: the deb file plus an optional changelog and meta (JSON)
   .post('/packages', requireScope('publish'), validate('query', publishQuery), async (c) => {
     const query = c.req.valid('query')
     const lengthLimit = maxDebSize(c.env) + 1024 * 1024
@@ -73,14 +73,14 @@ export const api = new Hono<AppEnv>()
 
     const form = await c.req.formData()
     const file = form.get('deb')
-    if (!(file instanceof File)) throw problem(400, 'invalid-request', '缺少 deb 文件字段')
+    if (!(file instanceof File)) throw problem(400, 'invalid-request', 'Missing deb file field')
     if (file.size > maxDebSize(c.env)) throw tooLarge(maxDebSize(c.env))
 
     let meta: z.infer<typeof metaPatch> | undefined
     const rawMeta = form.get('meta')
     if (typeof rawMeta === 'string' && rawMeta.trim()) {
       const parsed = metaPatch.safeParse(safeJson(rawMeta))
-      if (!parsed.success) throw problem(400, 'invalid-request', `meta 不合法：${parsed.error.message}`)
+      if (!parsed.success) throw problem(400, 'invalid-request', `Invalid meta: ${parsed.error.message}`)
       meta = parsed.data
     }
     const changelog = form.get('changelog')
@@ -100,13 +100,13 @@ export const api = new Hono<AppEnv>()
     return c.json(unwrap(await repo(c.env).setMeta(c.req.param('pkg'), c.req.valid('json'), c.var.actor.id)))
   })
 
-  // 上传图标 / 截图，按内容寻址存储，返回的 key 可直接写进 meta
+  // Upload an icon / screenshot, stored content-addressed; the returned key can go straight into meta
   .post('/packages/:pkg/assets', requireScope('publish'), async (c) => {
     const pkg = c.req.param('pkg')
     unwrap(await repo(c.env).getPackage(pkg))
     const type = (c.req.header('Content-Type') ?? '').split(';')[0]!.trim()
     const ext = ASSET_TYPES[type]
-    if (!ext) throw problem(415, 'unsupported-media-type', `只支持 ${Object.keys(ASSET_TYPES).join(', ')}`)
+    if (!ext) throw problem(415, 'unsupported-media-type', `Only ${Object.keys(ASSET_TYPES).join(', ')} are supported`)
 
     const bytes = await readBody(c.req.raw, ASSET_MAX, 'asset')
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
@@ -139,11 +139,11 @@ export const api = new Hono<AppEnv>()
     async (c) => c.json(unwrap(await repo(c.env).rollback(c.req.valid('param').gen, c.var.actor.id))),
   )
 
-api.notFound(() => problemResponse(404, 'not-found', '接口不存在'))
+api.notFound(() => problemResponse(404, 'not-found', 'No such endpoint'))
 api.onError((err) => {
   if (err instanceof HTTPException) return err.getResponse()
   console.error(err)
-  return problemResponse(500, 'internal', '服务器内部错误')
+  return problemResponse(500, 'internal', 'Internal server error')
 })
 
 export interface PublishResponse {
@@ -163,7 +163,7 @@ async function publishDeb(
   bytes: Uint8Array,
   options: { changelog?: string; force: boolean; allowDebug: boolean },
 ): Promise<PublishResponse> {
-  if (options.force && !actor.scopes.includes('admin')) throw problem(403, 'forbidden', 'force 覆盖需要 admin 权限')
+  if (options.force && !actor.scopes.includes('admin')) throw problem(403, 'forbidden', 'force requires the admin scope')
 
   let deb: InspectedDeb
   let id: PackageIdentity
@@ -177,14 +177,14 @@ async function publishDeb(
     throw err
   }
 
-  // Debian 惯例：文件名里不带 epoch
+  // Debian convention: no epoch in file names
   const fileVersion = id.version.replace(/^\d+:/, '')
   const filename = `pool/${id.package}/${id.package}_${fileVersion}_${id.arch}.deb`
 
-  // deb 文件不可变：同名文件已存在时，只有内容完全相同（重试）或 force 才继续
+  // Debs are immutable: if the file already exists, continue only when the content is identical (a retry) or with force
   const existing = await env.BUCKET.head(filename)
   if (existing && existing.customMetadata?.sha256 !== deb.sha256 && !options.force) {
-    throw problem(409, 'version-exists', `${id.package} ${id.version} (${id.arch}) 已发布且内容不同，请提升版本号`)
+    throw problem(409, 'version-exists', `${id.package} ${id.version} (${id.arch}) is already published with different content; bump the version`)
   }
   if (!existing || options.force) {
     await env.BUCKET.put(filename, bytes, {
@@ -233,14 +233,14 @@ function maxDebSize(env: Env): number {
 }
 
 function tooLarge(limit: number) {
-  return problem(413, 'too-large', `文件超过上限 ${Math.round(limit / 1024 / 1024)}MB`)
+  return problem(413, 'too-large', `File exceeds the ${Math.round(limit / 1024 / 1024)}MB limit`)
 }
 
-// 先看 Content-Length 提前拒绝，再按实际读取的长度兜底
+// Reject early on Content-Length, then double-check the actual length read
 async function readBody(req: Request, limit: number, what: string): Promise<Uint8Array> {
   if (Number(req.headers.get('Content-Length') ?? 0) > limit) throw tooLarge(limit)
   const bytes = new Uint8Array(await req.arrayBuffer())
-  if (bytes.byteLength === 0) throw problem(400, 'invalid-request', `请求体为空，需要上传 ${what}`)
+  if (bytes.byteLength === 0) throw problem(400, 'invalid-request', `Empty request body; expected a ${what}`)
   if (bytes.byteLength > limit) throw tooLarge(limit)
   return bytes
 }

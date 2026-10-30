@@ -4,7 +4,7 @@ export const ADMIN = { Authorization: 'Bearer test-admin-token' }
 
 export function fixture(name: string): Uint8Array {
   const b64 = env.FIXTURES[name]
-  if (!b64) throw new Error(`没有样本 ${name}`)
+  if (!b64) throw new Error(`No fixture named ${name}`)
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
 }
 

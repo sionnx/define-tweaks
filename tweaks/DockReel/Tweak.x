@@ -13,10 +13,10 @@
 //   4. While dragging an icon, resting near the platter's left/right edge turns
 //      the page.
 //
-// 无极模式（设置页「滚动模式」）是另一套独立样式，不影响上面的分页逻辑：
-//   - 所有图标按原版边距和间距等距排成一长条，不分页；
-//   - 松手后保留惯性，但最终停在格距整数倍上，最左边的图标总是完整露出；
-//   - 编辑时末尾多一个空位；拖图标停在边缘区内持续滚动。
+// Free scrolling mode ("Scroll Mode" in settings) is a separate layout that does not affect the paging logic above:
+//   - all icons sit in one long evenly spaced row using the stock margins and spacing, without pages;
+//   - scrolling keeps its momentum but settles on a whole slot, so the leftmost icon is always fully visible;
+//   - edit mode adds an empty slot at the end; holding a dragged icon in the edge zone keeps scrolling.
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
@@ -32,7 +32,7 @@ static const void *kDRDockConfigKey = &kDRDockConfigKey;
 static __weak SBIconListModel *gDockModel = nil;
 // Stock dock left/right inset, captured before we touch the layout config.
 static CGFloat gStockInset = 0;
-// 无极模式开关（启动时从设置读取）和一屏宽度（原版 Dock 列表宽度）
+// Free scrolling mode switch (read from settings at launch) and the width of one screen (the stock dock list width)
 static BOOL gFreeMode = NO;
 static CGFloat gPageWidth = 0;
 
@@ -75,7 +75,7 @@ static NSInteger DRWantedPageCount(SBIconListView *listView) {
 	return MIN(pages, (NSInteger)DR_MAX_PAGES);
 }
 
-// 无极模式：原版 4 图标 Dock 的图标间距，以及图标格距（图标宽 + 间距）
+// Free scrolling mode: icon spacing of the stock 4-icon dock, and the slot pitch (icon width + spacing)
 static CGFloat DRFreeSpacing(CGFloat pageWidth, CGFloat iconWidth) {
 	return (pageWidth - 2 * gStockInset - DR_ICONS_PER_PAGE * iconWidth) / (DR_ICONS_PER_PAGE - 1);
 }
@@ -91,15 +91,15 @@ static CGFloat DRFreePitch(SBIconListView *listView, CGFloat pageWidth) {
 	return iconWidth + DRFreeSpacing(pageWidth, iconWidth);
 }
 
-// 无极模式：图标数，编辑时末尾多一个空位
+// Free scrolling mode: icon count, plus an empty trailing slot while editing
 static NSInteger DRWantedSlotCount(SBIconListView *listView) {
 	NSUInteger icons = [listView respondsToSelector:@selector(model)] ? [listView.model numberOfIcons] : 0;
 	NSInteger slots = (NSInteger)icons + (DRIsEditing(listView) ? 1 : 0);
 	return MAX((NSInteger)1, MIN(slots, (NSInteger)DR_MAX_ICONS));
 }
 
-// 列表视图的总宽度：分页模式为 DR_MAX_PAGES 页；无极模式正好容纳 DR_MAX_ICONS 个图标加两端边距，
-// 这样系统按「居中全部列」排出的网格（用于点击和拖放定位）与图标实际位置一致
+// Total width of the list view: DR_MAX_PAGES pages in paged mode; in free scrolling mode exactly DR_MAX_ICONS icons plus both margins,
+// so the grid the system lays out by centering all columns (used for tap and drop targeting) matches where the icons actually are
 static CGFloat DRListWidth(SBIconListView *listView, CGFloat pageWidth) {
 	if (gFreeMode) {
 		CGFloat pitch = DRFreePitch(listView, pageWidth);
@@ -174,7 +174,7 @@ static BOOL DRTuneSpacing(SBIconListView *listView, SBIconListGridLayoutConfigur
 	return changed;
 }
 
-// 无极模式：网格两端用原版边距、间距用原版间距，列表宽度正好容纳全部列
+// Free scrolling mode: the grid uses the stock margins and spacing, and the list is exactly wide enough for every column
 static BOOL DRTuneFreeSpacing(SBIconListView *listView, SBIconListGridLayoutConfiguration *config, CGFloat pageWidth) {
 	if (!config || pageWidth <= 0 || gStockInset <= 0) return NO;
 	CGFloat iconWidth = config.iconImageInfo.size.width;
@@ -436,7 +436,7 @@ static void DRSetupDock(SBDockView *dockView) {
 
 	long long column = coordinate.col - 1;
 	if (gFreeMode) {
-		// 无极模式：所有图标等距排成一长条
+		// Free scrolling mode: all icons in one evenly spaced row
 		CGFloat x = gStockInset + column * (iconWidth + DRFreeSpacing(pageWidth, iconWidth));
 		CGFloat scale = self.window.screen.scale ?: UIScreen.mainScreen.scale;
 		origin.x = round(x * scale) / scale;
@@ -519,24 +519,24 @@ static void DRSetupDock(SBDockView *dockView) {
 
 %end
 
-// 设置页切换开关后发出此通知，SpringBoard 收到后自行重启
+// Posted by the settings pane after the switch is toggled; SpringBoard restarts itself when it receives it
 static void DRRespring(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-	// 稍作延迟，让开关动画走完
+	// Short delay so the switch animation can finish
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		[[%c(FBSystemService) sharedInstance] exitAndRelaunch:YES];
 	});
 }
 
-// 读取设置页里的总开关（默认开启）；关闭时不安装任何钩子，Dock 保持原样
+// Read the master switch from settings (on by default); when off, no hooks are installed and the dock stays stock
 %ctor {
-	// 无论开关状态都要监听，否则关闭后无法通过开关重新启用
+	// Always listen, regardless of the switch, otherwise the tweak could not be re-enabled once turned off
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, DRRespring,
 		CFSTR("to.define.dockreel/respring"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
 
 	Boolean valid = false;
 	Boolean enabled = CFPreferencesGetAppBooleanValue(CFSTR("Enabled"), CFSTR("to.define.dockreel"), &valid);
 	if (valid && !enabled) return;
-	// 滚动模式：0 分页（默认），1 无极
+	// Scroll mode: 0 = paged (default), 1 = free scrolling
 	gFreeMode = CFPreferencesGetAppIntegerValue(CFSTR("ScrollMode"), CFSTR("to.define.dockreel"), NULL) == 1;
 	%init;
 }

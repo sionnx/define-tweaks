@@ -13,7 +13,7 @@
 #define DR_EDGE_FIRST_DELAY 0.5
 #define DR_EDGE_REPEAT_DELAY 0.9
 
-// 无极模式：拖图标到边缘时的最大自动滚动速度（pt/s），越靠近边缘越快
+// Free scrolling mode: maximum auto-scroll speed (pt/s) when dragging an icon to the edge; faster closer to the edge
 #define DR_FREE_EDGE_MAX_SPEED 600.0
 
 // 1 writes /var/mobile/Library/Logs/DockReel.log (see DRDebug.m).

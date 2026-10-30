@@ -59,7 +59,7 @@ typedef struct SBIconCoordinate {
 @property (nonatomic, readonly) SBDockIconListView *dockListView;
 @end
 
-// FrontBoard：用于开关切换后重启 SpringBoard
+// FrontBoard: used to restart SpringBoard after the switch is toggled
 @interface FBSystemService : NSObject
 + (instancetype)sharedInstance;
 - (void)exitAndRelaunch:(BOOL)relaunch;

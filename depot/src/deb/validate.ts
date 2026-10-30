@@ -1,7 +1,7 @@
 import { type Control, field } from './control'
 import { isValidVersion } from './version'
 
-// roothide / rootless / rootful 三种越狱方案对应的架构
+// Architectures for the roothide / rootless / rootful jailbreak schemes
 export const ARCHITECTURES = ['iphoneos-arm64e', 'iphoneos-arm64', 'iphoneos-arm'] as const
 export type Architecture = (typeof ARCHITECTURES)[number]
 
@@ -9,7 +9,7 @@ const REQUIRED = ['Package', 'Version', 'Architecture', 'Maintainer', 'Descripti
 const PACKAGE_RE = /^[a-z0-9][a-z0-9.+-]+$/
 
 export interface ValidateOptions {
-  // 默认拒绝 Theos 的调试包（版本号带 +debug）
+  // Theos debug packages (versions containing +debug) are rejected by default
   allowDebug?: boolean
 }
 
@@ -22,20 +22,20 @@ export interface PackageIdentity {
 export function validateControl(control: Control, options: ValidateOptions = {}): PackageIdentity {
   const problems: string[] = []
   for (const name of REQUIRED) {
-    if (!field(control, name)) problems.push(`缺少必需字段 ${name}`)
+    if (!field(control, name)) problems.push(`Missing required field ${name}`)
   }
 
   const pkg = field(control, 'Package') ?? ''
   const version = field(control, 'Version') ?? ''
   const arch = field(control, 'Architecture') ?? ''
 
-  if (pkg && !PACKAGE_RE.test(pkg)) problems.push(`包名 ${pkg} 不合法，只允许小写字母、数字和 . + -`)
-  if (version && !isValidVersion(version)) problems.push(`版本号 ${version} 不合法`)
+  if (pkg && !PACKAGE_RE.test(pkg)) problems.push(`Invalid package name ${pkg}: only lowercase letters, digits and . + - are allowed`)
+  if (version && !isValidVersion(version)) problems.push(`Invalid version ${version}`)
   if (version && !options.allowDebug && /\+debug\b/.test(version)) {
-    problems.push(`版本号 ${version} 是调试包，请用 FINALPACKAGE=1 打包`)
+    problems.push(`Version ${version} is a debug build; package with FINALPACKAGE=1`)
   }
   if (arch && !(ARCHITECTURES as readonly string[]).includes(arch)) {
-    problems.push(`架构 ${arch} 不受支持，可选：${ARCHITECTURES.join(', ')}`)
+    problems.push(`Unsupported architecture ${arch}; expected one of: ${ARCHITECTURES.join(', ')}`)
   }
 
   if (problems.length > 0) throw new ControlValidationError(problems)
@@ -45,6 +45,6 @@ export function validateControl(control: Control, options: ValidateOptions = {})
 export class ControlValidationError extends Error {
   override name = 'ControlValidationError'
   constructor(readonly problems: string[]) {
-    super(problems.join('；'))
+    super(problems.join('; '))
   }
 }

@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import "DRPRootListController.h"
 
-// 从 bundle 的 Root.strings 取本地化文案（与 Root.plist 共用）
+// Localized strings come from the bundle's Root.strings (shared with Root.plist)
 #define DRPLocalized(key) NSLocalizedStringFromTableInBundle(key, @"Root", [NSBundle bundleForClass:[DRPRootListController class]], nil)
 
 @implementation DRPRootListController
@@ -13,7 +13,7 @@
 	return _specifiers;
 }
 
-// 开关写入后弹窗询问是否立即重启 SpringBoard
+// After the switch is written, ask whether to restart SpringBoard now
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
 	[super setPreferenceValue:value specifier:specifier];
 
@@ -22,7 +22,7 @@
 		preferredStyle:UIAlertControllerStyleAlert];
 	[alert addAction:[UIAlertAction actionWithTitle:DRPLocalized(@"LATER") style:UIAlertActionStyleCancel handler:nil]];
 	[alert addAction:[UIAlertAction actionWithTitle:DRPLocalized(@"RESPRING") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-		// 由 SpringBoard 内的 tweak 收到通知后自行重启
+		// The tweak inside SpringBoard restarts it when the notification arrives
 		CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
 			CFSTR("to.define.dockreel/respring"), NULL, NULL, true);
 	}]];

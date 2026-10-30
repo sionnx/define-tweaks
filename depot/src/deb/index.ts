@@ -20,24 +20,24 @@ export interface InspectedDeb extends Digests {
   control: Control
 }
 
-// 解析 .deb：取出 control 段落并计算各种哈希
+// Parse a .deb: extract the control paragraph and compute its hashes
 export async function inspectDeb(bytes: Uint8Array): Promise<InspectedDeb> {
   const entries = parseAr(bytes)
-  if (entries[0]?.name !== 'debian-binary') throw new DebFormatError('第一个成员必须是 debian-binary')
+  if (entries[0]?.name !== 'debian-binary') throw new DebFormatError('The first member must be debian-binary')
 
   const member = entries.find((e) => e.name.startsWith('control.tar'))
-  if (!member) throw new DebFormatError('找不到 control.tar.*')
+  if (!member) throw new DebFormatError('control.tar.* not found')
 
   const tar = await decompressMember(member.name, member.data)
   const file = findTarFile(tar, './control')
-  if (!file) throw new DebFormatError('control.tar 中没有 control 文件')
+  if (!file) throw new DebFormatError('No control file in control.tar')
 
   const control = parseControl(new TextDecoder().decode(file))
   return { control, ...(await digest(bytes)) }
 }
 
 export async function digest(bytes: Uint8Array): Promise<Digests> {
-  // Workers 的 crypto.subtle 额外支持 MD5，Packages 里的 MD5sum 字段需要它
+  // Workers' crypto.subtle also supports MD5, which the MD5sum field in Packages needs
   const [md5, sha1, sha256] = await Promise.all(
     (['MD5', 'SHA-1', 'SHA-256'] as const).map(async (alg) => hex(await crypto.subtle.digest(alg, bytes))),
   )

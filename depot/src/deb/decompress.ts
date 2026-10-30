@@ -1,11 +1,11 @@
 import { DebFormatError } from './ar'
 
-// 按 ar 成员名后缀解压 control.tar.*
-// 目前只支持 gzip 和不压缩（Theos 默认产物即 control.tar.gz），xz / zst 留作扩展点
+// Decompress control.tar.* based on the ar member name suffix.
+// Only gzip and uncompressed are supported for now (Theos produces control.tar.gz); xz / zst are left as extension points
 export async function decompressMember(name: string, data: Uint8Array): Promise<Uint8Array> {
   if (name.endsWith('.tar')) return data
   if (name.endsWith('.tar.gz')) return gunzip(data)
-  throw new UnsupportedCompressionError(`暂不支持 ${name} 的压缩格式，请用 gzip 打包 control`)
+  throw new UnsupportedCompressionError(`Unsupported compression for ${name}; build control with gzip`)
 }
 
 export async function gunzip(data: Uint8Array): Promise<Uint8Array> {

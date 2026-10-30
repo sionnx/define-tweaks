@@ -7,7 +7,7 @@ import { type IndexFile, renderRelease } from '../render/release'
 
 export const SNAPSHOT_KEEP = 20
 
-// 客户端读取的索引文件；写入根目录时 Release 必须最后写
+// Index files read by clients; Release must be written to the root last
 export const INDEX_FILES = ['Packages', 'Packages.gz', 'Release'] as const
 
 const CONTENT_TYPE: Record<string, string> = {
@@ -36,7 +36,7 @@ export async function buildSnapshot(
   return { files, packagesSha256: (await digest(packages)).sha256 }
 }
 
-// 先写入 snapshots/<gen>/ 归档，再按 Packages* → Release 的顺序覆盖根目录
+// Archive to snapshots/<gen>/ first, then overwrite the root in Packages* → Release order
 export async function writeSnapshot(bucket: R2Bucket, gen: number, files: IndexFile[]): Promise<void> {
   await Promise.all(files.map((f) => bucket.put(`snapshots/${gen}/${f.name}`, f.bytes, meta(f.name))))
   await activate(bucket, files)
@@ -52,7 +52,7 @@ export async function deleteSnapshots(bucket: R2Bucket, gens: number[]): Promise
   if (keys.length) await bucket.delete(keys)
 }
 
-// 为每个仍有在架版本的包重新生成描述页（只有 Sileo 原生 JSON）
+// Regenerate depictions (native Sileo JSON only) for every package that still has a listed version
 export async function writeDepictions(
   bucket: R2Bucket,
   records: PackageRecord[],
@@ -67,7 +67,7 @@ export async function writeDepictions(
         bucket.put(`depictions/${pkg}.json`, renderSileoDepiction(input, config), {
           httpMetadata: { contentType: 'application/json; charset=utf-8' },
         }),
-        // 清理以前生成的 HTML 描述页
+        // Clean up previously generated HTML depictions
         bucket.delete(`depictions/${pkg}.html`),
       ]
     }),

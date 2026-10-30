@@ -35,7 +35,7 @@
 	return MAX(0, self.contentSize.width - CGRectGetWidth(self.bounds));
 }
 
-// 无极模式：一屏放 4 格，每多一格内容加长一个格距
+// Free scrolling mode: one screen holds 4 slots; each extra slot adds one slot pitch to the content
 - (void)dr_setSlotCount:(NSInteger)count pitch:(CGFloat)pitch animated:(BOOL)animated {
 	count = MAX(1, MIN(count, DR_MAX_ICONS));
 #if DR_DEBUG
@@ -50,7 +50,7 @@
 	CGSize contentSize = CGSizeMake(width + extra, CGRectGetHeight(self.bounds));
 	if (!CGSizeEqualToSize(self.contentSize, contentSize)) self.contentSize = contentSize;
 
-	// 末尾空位消失（退出编辑）时滑回范围内
+	// Scroll back into range when the trailing empty slot disappears (leaving edit mode)
 	if (self.contentOffset.x > extra + 0.5) {
 		[self setContentOffset:CGPointMake(extra, 0) animated:animated];
 	}
@@ -125,7 +125,7 @@
 	[self dr_scrollToPage:target];
 }
 
-// 无极模式：停在边缘区内持续滚动，越靠近边缘越快；离开边缘区后停下
+// Free scrolling mode: keep scrolling while hovering in the edge zone, faster closer to the edge; stop after leaving it
 - (void)dr_freeDragMovedToPoint:(CGPoint)point {
 	CGFloat width = CGRectGetWidth(self.superview.bounds);
 	CGFloat offset = self.contentOffset.x;
@@ -149,7 +149,7 @@
 }
 
 - (void)dr_edgeLinkFired:(CADisplayLink *)link {
-	// 拖动可能在没有任何回调的情况下结束（比如回到桌面），不再编辑就停止
+	// A drag can end without any callback (e.g. going back home); stop once editing ends
 	BOOL editing = [self.listView respondsToSelector:@selector(isEditing)] && [self.listView isEditing];
 	if (!self.window || !editing) {
 		[self dr_dragEnded];

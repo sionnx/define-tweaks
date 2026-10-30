@@ -10,18 +10,18 @@ export interface Env {
   REPO_LABEL: string
   REPO_DESCRIPTION: string
   OIDC_AUDIENCE: string
-  // 允许 OIDC 发布的 GitHub 仓库，逗号分隔，如 "owner/define-tweaks"
+  // GitHub repositories allowed to publish via OIDC, comma-separated, e.g. "owner/define-tweaks"
   OIDC_REPOS: string
   MAX_DEB_SIZE: string
   ADMIN_TOKEN: string
 }
 
-// 一个已发布的 deb（某个包的某个版本、某个架构）
+// One published deb (a single package, version and architecture)
 export interface PackageRecord {
   package: string
   version: string
   arch: string
-  // R2 key，同时也是 Packages 里的 Filename
+  // R2 key, also used as Filename in Packages
   filename: string
   size: number
   md5: string
@@ -34,7 +34,7 @@ export interface PackageRecord {
   actor: string
 }
 
-// 包在源上的展示信息，与具体版本无关
+// How a package is presented on the repo, independent of any version
 export interface PackageMeta {
   package: string
   name?: string
@@ -43,7 +43,7 @@ export interface PackageMeta {
   screenshots?: string[]
   minIos?: string
   maxIos?: string
-  // 实测过的环境，如 "iOS 17.3"，显示在描述页简介下方
+  // Environment the package was tested on, e.g. "iOS 17.3", shown as a row in the depiction
   testedOn?: string
   tags?: string[]
   sourceUrl?: string
@@ -64,7 +64,7 @@ export function repoConfig(env: Env): RepoConfig {
   }
 }
 
-// 让 `cloudflare:workers` 的 env 与测试里的 env 也带上这些绑定的类型
+// Give the env from `cloudflare:workers` (and in tests) these binding types too
 type DepotEnv = Env
 declare global {
   namespace Cloudflare {

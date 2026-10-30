@@ -1,7 +1,7 @@
 name: Tweaks
 
-# - 推送到 main / PR：编译所有插件，确认能打包
-# - 推送 <插件名>@<版本> 的 tag（如 dockreel@0.1.0）：编译该插件并发布到 apt.define.to
+# - Push to main / PR: build every tweak to make sure it packages
+# - Push a <tweak>@<version> tag (e.g. dockreel@0.1.0): build that tweak and publish it to apt.define.to
 on:
   push:
     branches: [main]
@@ -47,7 +47,7 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: read
-      # 向 GitHub 申请 OIDC token，depot 用它验证发布来源
+      # Request a GitHub OIDC token; depot uses it to verify where the release comes from
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -59,19 +59,19 @@ jobs:
         run: |
           name=${TAG%@*}
           version=${TAG#*@}
-          # tag 用小写插件名，目录名大小写不限
+          # Tags use the lowercased tweak name; directory names may use any case
           dir=$(find tweaks -mindepth 1 -maxdepth 1 -type d | while read -r d; do
             [[ $(basename "$d" | tr '[:upper:]' '[:lower:]') == "$name" ]] && echo "$d"
           done)
-          [[ -n $dir ]] || { echo "::error::找不到插件目录：tweaks/$name"; exit 1; }
+          [[ -n $dir ]] || { echo "::error::Tweak directory not found: tweaks/$name"; exit 1; }
 
           control_version=$(sed -n 's/^Version: *//p' "$dir/control")
           if [[ $control_version != "$version" ]]; then
-            echo "::error::tag 版本 $version 与 $dir/control 中的 $control_version 不一致"
+            echo "::error::Tag version $version does not match $control_version in $dir/control"
             exit 1
           fi
 
-          # 注释 tag 的说明作为 changelog；轻量 tag 则取提交信息
+          # An annotated tag's message is the changelog; lightweight tags fall back to the commit message
           git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
           {
             echo "dir=$dir"

@@ -1,6 +1,6 @@
 import { DebFormatError } from './ar'
 
-// 极简 tar 读取：只为从 control.tar 里找出 ./control 文件，不处理链接、权限等
+// Minimal tar reader: only finds ./control inside control.tar; links, permissions etc. are ignored
 
 const BLOCK = 512
 const decoder = new TextDecoder()
@@ -11,17 +11,17 @@ export function findTarFile(bytes: Uint8Array, wanted: string): Uint8Array | und
 
   while (offset + BLOCK <= bytes.length) {
     const header = bytes.subarray(offset, offset + BLOCK)
-    // 连续的全零块表示归档结束
+    // An all-zero block marks the end of the archive
     if (header.every((b) => b === 0)) return undefined
 
     const size = parseOctal(header.subarray(124, 136))
     const type = String.fromCharCode(header[156] ?? 0)
     const dataStart = offset + BLOCK
     const dataEnd = dataStart + size
-    if (dataEnd > bytes.length) throw new DebFormatError('tar 成员被截断')
+    if (dataEnd > bytes.length) throw new DebFormatError('tar member is truncated')
 
     if (type === 'L') {
-      // GNU 长文件名：下一个成员的真实名字存在本成员数据里
+      // GNU long name: this member's data holds the real name of the next member
       longName = cString(bytes.subarray(dataStart, dataEnd))
     } else {
       const prefix = cString(header.subarray(345, 500))
@@ -46,7 +46,7 @@ function parseOctal(bytes: Uint8Array): number {
   return text ? Number.parseInt(text, 8) : 0
 }
 
-// "./control" 与 "control" 视为同一个文件
+// "./control" and "control" are the same file
 function normalize(path: string): string {
   return path.replace(/^\.\//, '')
 }

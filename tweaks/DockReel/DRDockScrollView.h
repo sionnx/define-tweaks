@@ -11,7 +11,7 @@
 @property (nonatomic, assign) NSInteger pageCount;
 @property (nonatomic, assign) NSInteger edgeDirection;
 @property (nonatomic, strong) NSTimer *edgeTimer;
-// 无极模式：不分页，松手后停在哪就是哪；内容长度按图标格数计算
+// Free scrolling mode: no paging, scrolling stops wherever it lands; content length is based on the number of icon slots
 @property (nonatomic, assign) BOOL freeMode;
 @property (nonatomic, assign) NSInteger slotCount;
 @property (nonatomic, assign) CGFloat edgeSpeed;

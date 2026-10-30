@@ -13,5 +13,5 @@ node_modules/
 dist/
 .dev.vars
 
-# depot 测试用的 deb 样本需要提交
+# depot test fixture debs must be committed
 !depot/test/fixtures/*.deb

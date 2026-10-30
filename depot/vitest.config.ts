@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { cloudflareTest } from '@cloudflare/vitest-plugin'
 import { defineConfig } from 'vitest/config'
 
-// 测试在 Workers 运行时里执行（需要 crypto.subtle 的 MD5、R2、DO），
-// 运行时里没有文件系统，所以把 deb 样本以 base64 形式注入为绑定
+// Tests run inside the Workers runtime (they need MD5 in crypto.subtle, R2 and DO).
+// The runtime has no filesystem, so the deb fixtures are injected as base64 bindings
 const dir = new URL('./test/fixtures/', import.meta.url)
 const fixtures = Object.fromEntries(
   readdirSync(dir)

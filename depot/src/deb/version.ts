@@ -1,5 +1,5 @@
-// dpkg 版本比较，与 `dpkg --compare-versions` 行为一致
-// 版本格式：[epoch:]upstream[-revision]
+// dpkg version comparison, matching `dpkg --compare-versions`
+// Version format: [epoch:]upstream[-revision]
 
 interface ParsedVersion {
   epoch: number
@@ -13,22 +13,22 @@ export function parseVersion(version: string): ParsedVersion {
   const colon = rest.indexOf(':')
   if (colon !== -1) {
     epoch = Number.parseInt(rest.slice(0, colon), 10)
-    if (!Number.isInteger(epoch) || epoch < 0) throw new Error(`版本号 epoch 无效：${version}`)
+    if (!Number.isInteger(epoch) || epoch < 0) throw new Error(`Invalid epoch in version: ${version}`)
     rest = rest.slice(colon + 1)
   }
-  // revision 取最后一个 "-" 之后的部分
+  // The revision is everything after the last "-"
   const dash = rest.lastIndexOf('-')
   const upstream = dash === -1 ? rest : rest.slice(0, dash)
   const revision = dash === -1 ? '' : rest.slice(dash + 1)
   return { epoch, upstream, revision }
 }
 
-// upstream 必须以数字开头，整体只允许 dpkg 认可的字符
+// upstream must start with a digit, and only characters dpkg accepts are allowed
 export function isValidVersion(version: string): boolean {
   return /^(?:\d+:)?[0-9][A-Za-z0-9.+~-]*$/.test(version)
 }
 
-// 返回负数 / 0 / 正数，可直接用于 Array.prototype.sort
+// Returns a negative number / 0 / a positive number, usable directly with Array.prototype.sort
 export function compareVersions(a: string, b: string): number {
   const va = parseVersion(a)
   const vb = parseVersion(b)
@@ -36,7 +36,7 @@ export function compareVersions(a: string, b: string): number {
   return compareFragment(va.upstream, vb.upstream) || compareFragment(va.revision, vb.revision)
 }
 
-// 字符排序权重：~ 最小（比空还小），字母在非字母符号之前
+// Character sort weight: ~ sorts lowest (even before the end of the string), letters before non-letters
 function order(char: string | undefined): number {
   if (char === undefined) return 0
   if (char === '~') return -1
@@ -49,7 +49,7 @@ function compareFragment(a: string, b: string): number {
   let i = 0
   let j = 0
   while (i < a.length || j < b.length) {
-    // 先逐字符比较非数字部分
+    // Compare the non-digit part character by character first
     let diff = 0
     while ((i < a.length && !isDigit(a[i])) || (j < b.length && !isDigit(b[j]))) {
       const ac = order(i < a.length && !isDigit(a[i]) ? a[i] : undefined)
@@ -58,7 +58,7 @@ function compareFragment(a: string, b: string): number {
       if (i < a.length && !isDigit(a[i])) i++
       if (j < b.length && !isDigit(b[j])) j++
     }
-    // 再按数值比较数字部分（忽略前导零）
+    // Then compare the digit part numerically (ignoring leading zeros)
     while (a[i] === '0') i++
     while (b[j] === '0') j++
     while (isDigit(a[i]) && isDigit(b[j])) {

@@ -1,7 +1,7 @@
 import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
-// RFC 9457 problem+json 错误
+// RFC 9457 problem+json errors
 export interface Problem {
   type: string
   title: string
@@ -37,7 +37,7 @@ export function problemResponse(status: ContentfulStatusCode, slug: string, deta
   })
 }
 
-// 在路由里直接 throw，由 app.onError 统一输出
+// Throw from a route; app.onError turns it into the response
 export function problem(status: ContentfulStatusCode, slug: string, detail?: string, extra?: object): HTTPException {
   return new HTTPException(status, { res: problemResponse(status, slug, detail, extra) })
 }

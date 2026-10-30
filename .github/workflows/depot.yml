@@ -1,6 +1,6 @@
 name: Depot
 
-# 只做类型检查和测试；部署由 Cloudflare Workers Builds 在 main 更新后自动完成
+# Typecheck and test only; Cloudflare Workers Builds deploys after main is updated
 on:
   push:
     branches: [main]
@@ -29,7 +29,7 @@ jobs:
         working-directory: depot
     steps:
       - uses: actions/checkout@v7
-      # 版本取自根 package.json 的 packageManager
+      # Version comes from packageManager in the root package.json
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:

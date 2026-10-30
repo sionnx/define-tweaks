@@ -1,9 +1,9 @@
 name: Setup roothide Theos
-description: 安装 roothide/theos、iOS SDK 与构建依赖（GNU make、ldid）
+description: Install roothide/theos, an iOS SDK and build dependencies (GNU make, ldid)
 
 inputs:
   sdk:
-    description: 要安装的 SDK（来自 theos/sdks）
+    description: SDK to install (from theos/sdks)
     default: iPhoneOS16.5
 
 runs:
@@ -13,7 +13,7 @@ runs:
       shell: bash
       run: |
         brew install ldid make xz
-        # Theos 需要 GNU make 4，macOS 自带的是 3.81
+        # Theos needs GNU make 4; macOS ships 3.81
         echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
     - name: Resolve roothide/theos revision
@@ -21,7 +21,7 @@ runs:
       shell: bash
       run: echo "sha=$(git ls-remote https://github.com/roothide/theos HEAD | cut -f1)" >> "$GITHUB_OUTPUT"
 
-    # 插件 Makefile 默认使用 ~/theos-roothide，这里安装到同一位置
+    # Tweak Makefiles default to ~/theos-roothide, so install it there
     - name: Cache Theos
       id: cache
       uses: actions/cache@v6
@@ -33,7 +33,7 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       env:
-        # install-sdk 调用 GitHub API，带上 token 避免限流
+        # install-sdk calls the GitHub API; pass a token to avoid rate limits
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         THEOS="$HOME/theos-roothide"

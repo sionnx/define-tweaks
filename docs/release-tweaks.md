@@ -83,7 +83,7 @@ gh run list --workflow Tweaks --limit 1
 
 ## 4. When something goes wrong
 
-**The release job fails at "Resolve tweak from tag" with a version mismatch error.** The tag was pushed before `control` was updated, or `<version>` in the tag has a typo. (A "tweak directory not found" error at the same step means `<tweak>` in the tag is misspelled.) Delete the tag locally and on GitHub, fix and push `control`, then tag again:
+**The release job fails at "Resolve tweak from tag" with `Tag version … does not match … in tweaks/<Tweak>/control`.** The tag was pushed before `control` was updated, or `<version>` in the tag has a typo. (`Tweak directory not found` at the same step means `<tweak>` in the tag is misspelled.) Delete the tag locally and on GitHub, fix and push `control`, then tag again:
 
 ```bash
 git tag -d dockreel@0.2.0

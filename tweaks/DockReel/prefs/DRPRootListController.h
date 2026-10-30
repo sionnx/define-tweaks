@@ -1,5 +1,5 @@
 #import <Preferences/PSListController.h>
 
-// DockReel 设置页（只有一个总开关）
+// DockReel settings pane (a single master switch)
 @interface DRPRootListController : PSListController
 @end

@@ -1,4 +1,4 @@
-// DO 内 SQLite 的表结构；新增迁移时往 MIGRATIONS 末尾追加，不要修改已有条目
+// SQLite schema inside the DO. Append new migrations to MIGRATIONS; never edit existing entries
 
 const MIGRATIONS: string[] = [
   `
@@ -11,7 +11,7 @@ const MIGRATIONS: string[] = [
     md5          TEXT NOT NULL,
     sha1         TEXT NOT NULL,
     sha256       TEXT NOT NULL,
-    control      TEXT NOT NULL,          -- control 段落的 JSON
+    control      TEXT NOT NULL,          -- control paragraph as JSON
     changelog    TEXT,
     yanked       INTEGER NOT NULL DEFAULT 0,
     published_at INTEGER NOT NULL,
@@ -20,14 +20,14 @@ const MIGRATIONS: string[] = [
   );
   CREATE TABLE meta (
     package    TEXT PRIMARY KEY,
-    data       TEXT NOT NULL,            -- PackageMeta 的 JSON
+    data       TEXT NOT NULL,            -- PackageMeta as JSON
     updated_at INTEGER NOT NULL
   );
   CREATE TABLE snapshots (
     gen        INTEGER PRIMARY KEY,
     created_at INTEGER NOT NULL,
     reason     TEXT NOT NULL,
-    entries    TEXT NOT NULL,            -- 快照包含的 "包名|版本|架构" 列表 JSON，用于回滚
+    entries    TEXT NOT NULL,            -- JSON list of "package|version|arch" in the snapshot, used for rollback
     packages_sha256 TEXT NOT NULL
   );
   CREATE TABLE audit (

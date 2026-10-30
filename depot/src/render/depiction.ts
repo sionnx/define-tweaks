@@ -2,13 +2,13 @@ import { field } from '../deb'
 import type { PackageMeta, PackageRecord, RepoConfig } from '../env'
 import { absolute, sortRecords } from './packages'
 
-// 描述页数据：由元数据 + 该包所有未下架版本（旧 → 新）生成
+// Depiction input: the package meta plus all of the package's listed versions (oldest → newest)
 export interface DepictionInput {
   meta: PackageMeta | undefined
   records: PackageRecord[]
 }
 
-// 中性灰：Sileo 只接受一个 tintColor，浅色和深色模式下都要清晰
+// Neutral gray: Sileo takes a single tintColor, which must read well in both light and dark mode
 const TINT = '#8e8e93'
 const CHANGELOG_LIMIT = 10
 
@@ -17,7 +17,7 @@ function summarize({ meta, records }: DepictionInput, config: RepoConfig) {
   const latest = sorted.at(-1)!
   const description = field(latest.control, 'Description') ?? ''
   const [summary = '', ...long] = description.split('\n')
-  // 同一版本可能有多个架构，changelog 按版本去重
+  // A version may ship several architectures; dedupe the changelog by version
   const versions = [...new Map(sorted.map((r) => [r.version, r])).values()].reverse()
   return {
     pkg: latest.package,
@@ -43,7 +43,7 @@ function compatibility(meta: PackageMeta | undefined): string | undefined {
   return `iOS ${meta.minIos ?? '?'} – ${meta.maxIos ?? '?'}`
 }
 
-// Sileo 原生描述页
+// Native Sileo depiction
 export function renderSileoDepiction(input: DepictionInput, config: RepoConfig): string {
   const d = summarize(input, config)
   const details: unknown[] = [

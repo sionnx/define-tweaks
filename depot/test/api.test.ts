@@ -8,7 +8,7 @@ import { ADMIN, fixture, sha256 } from './helpers'
 
 const BASE = 'https://apt.define.to'
 
-// 每个用例从空的 R2 和 DO 开始
+// Every test starts from an empty R2 and DO
 beforeEach(() => reset())
 
 function call(path: string, init?: RequestInit) {
@@ -25,12 +25,12 @@ async function text(path: string) {
   return res.text()
 }
 
-describe('发布流程', () => {
-  it('发布 → 索引 → 描述页 → 元数据 → 下架 → 回滚', async () => {
+describe('publishing', () => {
+  it('publish → index → depiction → meta → yank → rollback', async () => {
     const deb = fixture('dockpages-roothide.deb')
     const debHash = await sha256(deb)
 
-    // 首次发布
+    // First release
     let res = await put(deb, '?changelog=' + encodeURIComponent('First release'))
     expect(res.status).toBe(201)
     const published = await res.json<{ gen: number; created: boolean; url: string; sha256: string }>()
@@ -41,12 +41,12 @@ describe('发布流程', () => {
       url: `${BASE}/pool/to.define.dockpages/to.define.dockpages_0.1.0_iphoneos-arm64e.deb`,
     })
 
-    // 相同文件重复上传是幂等的，不产生新快照
+    // Re-uploading the same file is idempotent and creates no new snapshot
     res = await put(deb)
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ gen: 1, created: false })
 
-    // Packages 条目与哈希
+    // Packages entry and hashes
     const packages = await text('/Packages')
     expect(packages).toContain('Package: to.define.dockpages\n')
     expect(packages).toContain('Filename: pool/to.define.dockpages/to.define.dockpages_0.1.0_iphoneos-arm64e.deb\n')
@@ -55,7 +55,7 @@ describe('发布流程', () => {
     expect(packages).toContain(`SileoDepiction: ${BASE}/depictions/to.define.dockpages.json`)
     expect(packages).not.toMatch(/^Depiction:/m)
 
-    // Packages.gz 解压后与 Packages 一致；Release 里记录的哈希正确
+    // Packages.gz decompresses to Packages; the hashes in Release are correct
     const gz = new Uint8Array(await (await call('/Packages.gz')).arrayBuffer())
     expect(new TextDecoder().decode(await gunzip(gz))).toBe(packages)
     const release = await text('/Release')
@@ -64,14 +64,14 @@ describe('发布流程', () => {
     expect(release).toContain(`${await sha256(gz)} ${String(gz.byteLength).padStart(8)} Packages.gz\n`)
     expect(release).toContain('Architectures: iphoneos-arm64e iphoneos-arm64 iphoneos-arm\n')
 
-    // 描述页
+    // Depiction
     const sileo = JSON.parse(await text('/depictions/to.define.dockpages.json'))
     expect(sileo.class).toBe('DepictionTabView')
     expect(JSON.stringify(sileo)).toContain('First release')
-    // 不再生成 HTML 描述页
+    // HTML depictions are no longer generated
     expect((await call('/depictions/to.define.dockpages.html')).status).toBe(404)
 
-    // multipart 发布第二个包（rootless，带 epoch），同时写入元数据
+    // Publish a second package via multipart (rootless, with an epoch) and set its meta at the same time
     const form = new FormData()
     form.append('deb', new File([fixture('sample-rootless.deb')], 'sample.deb'))
     form.append('changelog', 'Beta')
@@ -83,39 +83,39 @@ describe('发布流程', () => {
     const withSample = await text('/Packages')
     expect(withSample).toContain('Name: Sample Pro\n')
     expect(withSample).toContain(`Icon: ${BASE}/assets/com.example.sample/icon.png\n`)
-    // 文件名去掉 epoch
+    // The epoch is dropped from the file name
     expect(withSample).toContain('Filename: pool/com.example.sample/com.example.sample_2.0~beta1-3_iphoneos-arm64.deb\n')
-    // 多行描述按 Debian 格式输出
+    // Multi-line descriptions use the Debian format
     expect(withSample).toContain('Description: Sample rootless package\n Long description line one.\n .\n Line after blank.\n')
 
-    // 列表接口
+    // List endpoint
     const list = await (await call('/api/v1/packages')).json<{ package: string }[]>()
     expect(list.map((p) => p.package)).toEqual(['com.example.sample', 'to.define.dockpages'])
 
-    // 下架 sample
+    // Yank sample
     res = await call('/api/v1/packages/com.example.sample/1:2.0~beta1-3', { method: 'DELETE', headers: ADMIN })
     expect(res.status).toBe(200)
     expect(await text('/Packages')).not.toContain('com.example.sample')
 
-    // 回滚到包含 sample 的快照
+    // Roll back to the snapshot that still has sample
     const snapshots = await (await call('/api/v1/index/snapshots', { headers: ADMIN })).json<{ gen: number; entries: number }[]>()
     const target = snapshots.find((s) => s.entries === 2)!
     res = await call(`/api/v1/index/rollback/${target.gen}`, { method: 'POST', headers: ADMIN })
     expect(res.status).toBe(200)
     expect(await text('/Packages')).toContain('Package: com.example.sample\n')
 
-    // purge 删除记录和文件
+    // purge deletes the records and the file
     res = await call('/api/v1/packages/com.example.sample/1:2.0~beta1-3?purge=1', { method: 'DELETE', headers: ADMIN })
     expect(res.status).toBe(200)
     expect(await env.BUCKET.head('pool/com.example.sample/com.example.sample_2.0~beta1-3_iphoneos-arm64.deb')).toBeNull()
     expect((await call('/api/v1/packages/com.example.sample')).status).toBe(404)
   })
 
-  it('同版本不同内容返回 409，admin 可以 force 覆盖', async () => {
+  it('returns 409 for the same version with different content; admin can force overwrite', async () => {
     const deb = fixture('dockpages-roothide.deb')
     expect((await put(deb)).status).toBe(201)
 
-    // 改动 data 成员的最后一个字节：control 不变，但文件内容不同
+    // Flip the last byte of the data member: same control, different file content
     const tampered = deb.slice()
     const last = tampered.length - 1
     tampered[last] = tampered[last]! ^ 0xff
@@ -128,7 +128,7 @@ describe('发布流程', () => {
     expect(await text('/Packages')).toContain(`SHA256: ${await sha256(tampered)}`)
   })
 
-  it('拒绝调试包、不支持的压缩格式和非 deb 文件', async () => {
+  it('rejects debug builds, unsupported compression and non-deb files', async () => {
     let res = await put(fixture('dockpages-debug.deb'))
     expect(res.status).toBe(422)
     expect(await res.json()).toMatchObject({ type: 'https://apt.define.to/errors/invalid-control' })
@@ -141,16 +141,16 @@ describe('发布流程', () => {
     expect((await put(new TextEncoder().encode('not a deb'))).status).toBe(422)
   })
 
-  it('认证', async () => {
+  it('authentication', async () => {
     const deb = fixture('dockpages-roothide.deb')
     expect((await put(deb, '', {})).status).toBe(401)
     expect((await put(deb, '', { Authorization: 'Bearer wrong' })).status).toBe(401)
     expect((await call('/api/v1/index/rebuild', { method: 'POST' })).status).toBe(401)
-    // 公开的只读接口不需要认证
+    // Public read-only endpoints need no auth
     expect((await call('/api/v1/packages')).status).toBe(200)
   })
 
-  it('上传图标并通过 PATCH 写入元数据', async () => {
+  it('uploads an icon and sets meta via PATCH', async () => {
     expect((await put(fixture('dockpages-roothide.deb'))).status).toBe(201)
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
     let res = await call('/api/v1/packages/to.define.dockpages/assets', {
@@ -170,7 +170,7 @@ describe('发布流程', () => {
     expect(res.status).toBe(200)
     expect(await text('/Packages')).toContain(`Icon: ${BASE}/${key}\n`)
 
-    // 实测版本作为信息表格中的一行，紧跟在 Author 之后
+    // The tested-on version is its own table row, right after Author
     const views = JSON.parse(await text('/depictions/to.define.dockpages.json')).tabs[0].views
     expect(views[0].markdown).toBe('Paged, swipeable dock with 8 icons (2 pages x 4).')
     const rows = views.filter((v: { class: string }) => v.class === 'DepictionTableTextView')
@@ -180,7 +180,7 @@ describe('发布流程', () => {
       ['Tested on', 'iOS 17.3'],
     ])
 
-    // 未知字段被拒绝
+    // Unknown fields are rejected
     res = await call('/api/v1/packages/to.define.dockpages/meta', {
       method: 'PATCH',
       headers: { ...ADMIN, 'Content-Type': 'application/json' },
@@ -202,7 +202,7 @@ describe('GitHub OIDC', () => {
     privateJwk = { ...((await crypto.subtle.exportKey('jwk', pair.privateKey)) as JsonWebKey), kid: 'test-key' }
     const publicJwk = { ...((await crypto.subtle.exportKey('jwk', pair.publicKey)) as JsonWebKey), kid: 'test-key', alg: 'RS256', use: 'sig' }
 
-    // 拦截 Worker 对 GitHub JWKS 的请求
+    // Intercept the Worker's requests for GitHub's JWKS
     const realFetch = globalThis.fetch
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input)
@@ -232,16 +232,16 @@ describe('GitHub OIDC', () => {
     return { Authorization: `Bearer ${token}` }
   }
 
-  it('tag 触发的 workflow 可以发布，但不能做管理操作', async () => {
+  it('a tag-triggered workflow can publish but not perform admin actions', async () => {
     const res = await put(fixture('dockpages-roothide.deb'), '', await oidc())
     expect(res.status).toBe(201)
     const deleted = await call('/api/v1/packages/to.define.dockpages/0.1.0', { method: 'DELETE', headers: await oidc() })
     expect(deleted.status).toBe(403)
-    // force 也需要 admin
+    // force also needs admin
     expect((await put(fixture('dockpages-roothide.deb'), '?force=1', await oidc())).status).toBe(403)
   })
 
-  it('aud / 仓库 / ref / 过期 校验', async () => {
+  it('checks aud / repository / ref / expiry', async () => {
     const deb = fixture('dockpages-roothide.deb')
     expect((await put(deb, '', await oidc({ aud: 'someone-else' }))).status).toBe(401)
     expect((await put(deb, '', await oidc({ repository: 'evil/fork' }))).status).toBe(403)
@@ -251,8 +251,8 @@ describe('GitHub OIDC', () => {
   })
 })
 
-describe('源文件读取', () => {
-  it('支持 HEAD、Range、ETag 和不可变缓存头', async () => {
+describe('serving repo files', () => {
+  it('supports HEAD, Range, ETag and immutable cache headers', async () => {
     const deb = fixture('dockpages-roothide.deb')
     const { url } = await (await put(deb)).json<{ url: string }>()
     const path = new URL(url).pathname
