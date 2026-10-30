@@ -1,6 +1,6 @@
 TARGET := iphone:clang:latest:15.0
 ARCHS = arm64 arm64e
-INSTALL_TARGET_PROCESSES = SpringBoard
+INSTALL_TARGET_PROCESSES = SpringBoard Preferences
 
 # Dopamine-roothide: build with roothide/theos (~/theos-roothide).
 THEOS = $(HOME)/theos-roothide
@@ -18,3 +18,6 @@ DockReel_CFLAGS = -fobjc-arc
 DockReel_FRAMEWORKS = UIKit QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+
+SUBPROJECTS += prefs
+include $(THEOS_MAKE_PATH)/aggregate.mk

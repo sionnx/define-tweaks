@@ -1,0 +1,12 @@
+/* 设置页 */
+"ENABLED" = "Enabled";
+"FOOTER" = "Changes take effect after a respring.";
+"SCROLL_MODE" = "Scroll Mode";
+"PAGED" = "Paged";
+"FREE" = "Free";
+
+/* 重启确认弹窗 */
+"RESPRING_TITLE" = "Respring Required";
+"RESPRING_MESSAGE" = "SpringBoard needs to restart for this change to take effect. Respring now?";
+"LATER" = "Later";
+"RESPRING" = "Respring";

@@ -6,4 +6,4 @@ Description: Scrollable dock with more than 4 icons, in paged or free scrolling 
 Maintainer: Sion
 Author: Sion
 Section: Tweaks
-Depends: mobilesubstrate (>= 0.9.5000)
+Depends: mobilesubstrate (>= 0.9.5000), preferenceloader

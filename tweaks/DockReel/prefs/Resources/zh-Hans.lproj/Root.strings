@@ -1,0 +1,12 @@
+/* 设置页 */
+"ENABLED" = "启用";
+"FOOTER" = "更改后需重启 SpringBoard 才能生效。";
+"SCROLL_MODE" = "滚动模式";
+"PAGED" = "分页";
+"FREE" = "无极";
+
+/* 重启确认弹窗 */
+"RESPRING_TITLE" = "需要重启 SpringBoard";
+"RESPRING_MESSAGE" = "更改需要重启 SpringBoard 才能生效，现在重启吗？";
+"LATER" = "稍后";
+"RESPRING" = "重启";
