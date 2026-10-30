@@ -8,7 +8,8 @@ export interface DepictionInput {
   records: PackageRecord[]
 }
 
-const TINT = '#5b6cf9'
+// 中性灰：Sileo 只接受一个 tintColor，浅色和深色模式下都要清晰
+const TINT = '#8e8e93'
 const CHANGELOG_LIMIT = 10
 
 function summarize({ meta, records }: DepictionInput, config: RepoConfig) {
