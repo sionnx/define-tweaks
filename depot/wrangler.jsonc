@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "depot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  // 首页、CydiaIcon.png、sileo-featured.json 等静态文件，命中时不进入 Worker
+  "assets": { "directory": "./static", "binding": "ASSETS" },
+
+  // 正式环境：apt.define.to
+  "routes": [{ "pattern": "apt.define.to", "custom_domain": true }],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "define-apt" }],
+  "durable_objects": {
+    "bindings": [{ "name": "REPO_INDEX", "class_name": "RepoIndex" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RepoIndex"] }],
+  "vars": {
+    "PUBLIC_URL": "https://apt.define.to",
+    "REPO_LABEL": "Define",
+    "REPO_DESCRIPTION": "Define tweaks",
+    "OIDC_AUDIENCE": "apt.define.to",
+    // 允许通过 GitHub Actions OIDC 发布的仓库，逗号分隔
+    "OIDC_REPOS": "sionnx/define-tweaks",
+    "MAX_DEB_SIZE": "67108864"
+  },
+  // ADMIN_TOKEN 通过 `wrangler secret put ADMIN_TOKEN` 设置，本地放在 .dev.vars
+
+  "env": {
+    // 预发布环境：apt-staging.define.to
+    "staging": {
+      "routes": [{ "pattern": "apt-staging.define.to", "custom_domain": true }],
+      "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "define-apt-staging" }],
+      "durable_objects": {
+        "bindings": [{ "name": "REPO_INDEX", "class_name": "RepoIndex" }]
+      },
+      "vars": {
+        "PUBLIC_URL": "https://apt-staging.define.to",
+        "REPO_LABEL": "Define (staging)",
+        "REPO_DESCRIPTION": "Define tweaks (staging)",
+        "OIDC_AUDIENCE": "apt-staging.define.to",
+        "OIDC_REPOS": "sionnx/define-tweaks",
+        "MAX_DEB_SIZE": "67108864"
+      }
+    }
+  }
+}

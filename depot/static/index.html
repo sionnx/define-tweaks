@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Define Repo</title>
+<link rel="icon" href="/CydiaIcon.png">
+<style>
+  :root { color-scheme: light dark; --bg: #f2f2f7; --card: #fff; --fg: #1c1c1e; --muted: #6e6e73; --tint: #5b6cf9; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #98989f; } }
+  body { margin: 0; padding: 32px 16px; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  header img { width: 60px; height: 60px; border-radius: 14px; }
+  h1 { margin: 0; font-size: 26px; } .muted { color: var(--muted); margin: 0; }
+  .card { background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .buttons { display: grid; gap: 10px; }
+  .buttons a { display: block; text-align: center; padding: 12px; border-radius: 10px; background: var(--tint); color: #fff; text-decoration: none; font-weight: 600; }
+  code { display: block; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--muted) 15%, transparent); word-break: break-all; }
+  ul { padding-left: 18px; margin: 0; } li + li { margin-top: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="/CydiaIcon.png" alt="">
+    <div><h1>Define Repo</h1><p class="muted">Tweaks for roothide &amp; rootless jailbreaks</p></div>
+  </header>
+
+  <div class="card buttons">
+    <a href="sileo://source/https://apt.define.to/">Add to Sileo</a>
+    <a href="zbra://sources/add/https://apt.define.to/">Add to Zebra</a>
+    <a href="cydia://url/https://cydia.saurik.com/api/share#?source=https://apt.define.to/">Add to Cydia</a>
+  </div>
+
+  <div class="card">
+    <p class="muted" style="margin-bottom:8px">Or add this URL manually:</p>
+    <code>https://apt.define.to/</code>
+  </div>
+
+  <div class="card" id="packages"><p class="muted">Loading packages…</p></div>
+</main>
+<script>
+  // 列出源里的插件（读取公开的 /api/v1/packages）
+  fetch('/api/v1/packages')
+    .then((r) => r.json())
+    .then((list) => {
+      const box = document.getElementById('packages')
+      if (!list.length) { box.innerHTML = '<p class="muted">No packages yet.</p>'; return }
+      const ul = document.createElement('ul')
+      for (const item of list) {
+        const li = document.createElement('li')
+        const a = document.createElement('a')
+        a.href = `/depictions/${item.package}.html`
+        a.textContent = item.meta?.name || item.latest.control.Name || item.package
+        li.append(a, ` — ${item.latest.version}`)
+        ul.append(li)
+      }
+      box.replaceChildren(ul)
+    })
+    .catch(() => { document.getElementById('packages').innerHTML = '<p class="muted">Failed to load packages.</p>' })
+</script>
+</body>
+</html>
