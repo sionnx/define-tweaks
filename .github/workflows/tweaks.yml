@@ -24,7 +24,7 @@ jobs:
     if: github.ref_type != 'tag'
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-theos
 
       - name: Build all tweaks
@@ -36,7 +36,7 @@ jobs:
             echo "::endgroup::"
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages
           path: tweaks/*/packages/*.deb
@@ -50,7 +50,7 @@ jobs:
       # 向 GitHub 申请 OIDC token，depot 用它验证发布来源
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Resolve tweak from tag
         id: tag
@@ -97,7 +97,7 @@ jobs:
             scripts/publish.sh "$deb" "$CHANGELOG"
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ github.ref_name }}
           path: ${{ steps.tag.outputs.dir }}/packages/*.deb

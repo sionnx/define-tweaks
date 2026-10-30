@@ -24,7 +24,7 @@ runs:
     # 插件 Makefile 默认使用 ~/theos-roothide，这里安装到同一位置
     - name: Cache Theos
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/theos-roothide
         key: theos-roothide-${{ steps.rev.outputs.sha }}-${{ inputs.sdk }}
