@@ -33,7 +33,7 @@ Run these from the repository root. The examples use DockReel; replace the direc
 
   The output in `tweaks/DockReel/packages/` must be named `<package>_<version>_iphoneos-arm64e.deb` with exactly the new version.
 
-- [ ] **Test on a real device** (iOS 17.3, Dopamine roothide): install the package, respring, and exercise both the tweak and its settings pane.
+- [ ] **Test on a real device** (iOS 17.3, Dopamine RootHide 3): install the package, respring, and exercise both the tweak and its settings pane.
 
 - [ ] **Commit and push the version bump to `main`.** The working tree must be clean, and `main` must contain the commit you are about to tag.
 
@@ -78,7 +78,7 @@ gh run list --workflow Tweaks --limit 1
   curl -X PATCH https://apt.define.to/api/v1/packages/to.define.dockreel/meta \
     -H "Authorization: Bearer $(security find-generic-password -s apt.define.to -a ADMIN_TOKEN -w)" \
     -H "Content-Type: application/json" \
-    -d '{"testedOn": "iOS 17.3"}'
+    -d '{"testedOn": "iOS 17.3 with Dopamine RootHide 3"}'
   ```
 
 ## 4. When something goes wrong

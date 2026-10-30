@@ -1,5 +1,5 @@
 
-Target platform: iOS 17.3, jailbroken with [Dopamine-roothide 3](https://github.com/roothide/Dopamine-roothide).
+Target platform: iOS 17.3, jailbroken with [Dopamine RootHide 3](https://github.com/roothide/Dopamine-roothide).
 
 README.md is in English only.
 

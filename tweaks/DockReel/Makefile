@@ -2,7 +2,7 @@ TARGET := iphone:clang:latest:15.0
 ARCHS = arm64 arm64e
 INSTALL_TARGET_PROCESSES = SpringBoard Preferences
 
-# Dopamine-roothide: build with roothide/theos (~/theos-roothide).
+# Dopamine RootHide: build with roothide/theos (~/theos-roothide).
 THEOS = $(HOME)/theos-roothide
 THEOS_PACKAGE_SCHEME = roothide
 

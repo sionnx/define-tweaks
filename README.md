@@ -2,7 +2,7 @@
 
 Open-source jailbreak tweaks, and the source code of the [apt.define.to](https://apt.define.to) repo that distributes them.
 
-Tweaks target **iOS 17.3** with [Dopamine-roothide](https://github.com/roothide/Dopamine-roothide).
+Tweaks target **iOS 17.3** with [Dopamine RootHide 3](https://github.com/roothide/Dopamine-roothide).
 
 ## Install
 
