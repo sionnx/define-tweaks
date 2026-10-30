@@ -6,3 +6,5 @@ README.md is available in both English and Chinese, with English as the default.
 Write comments in Chinese.
 
 Always answer my questions in Chinese.
+
+When releasing a tweak, follow [docs/release-tweaks.md](docs/release-tweaks.md).
