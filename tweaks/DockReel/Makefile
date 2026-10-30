@@ -13,7 +13,7 @@ THEOS_DEVICE_PORT ?= 2222
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = DockReel
-DockReel_FILES = Tweak.x DRDockScrollView.m DRDebug.m
+DockReel_FILES = $(wildcard sources/*.x sources/*.m)
 DockReel_CFLAGS = -fobjc-arc
 DockReel_FRAMEWORKS = UIKit QuartzCore
 

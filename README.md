@@ -30,6 +30,17 @@ docs/        Guides, e.g. how to release a tweak
 .github/     CI: build tweaks, publish on tags, test depot
 ```
 
+Each tweak follows the same layout. Directory names are lowercase, matching the directories Theos requires (`layout/`, `packages/`):
+
+```
+tweaks/DockReel/
+├── Makefile
+├── control
+├── DockReel.plist   Injection filter, must stay next to the Makefile
+├── sources/         All tweak code (.x, .m, .h)
+└── prefs/           Settings pane (Theos subproject)
+```
+
 ## Building a tweak
 
 Tweaks are built with [roothide/theos](https://github.com/roothide/theos), installed at `~/theos-roothide` with the iPhoneOS 16.5 SDK.
