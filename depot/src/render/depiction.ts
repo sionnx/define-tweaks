@@ -47,12 +47,7 @@ function compatibility(meta: PackageMeta | undefined): string | undefined {
 export function renderSileoDepiction(input: DepictionInput, config: RepoConfig): string {
   const d = summarize(input, config)
   const details: unknown[] = [
-    {
-      class: 'DepictionMarkdownView',
-      // 实测过的系统版本跟在简介后面单独一段
-      markdown: [d.summary, d.details, d.testedOn && `Tested on ${d.testedOn}`].filter(Boolean).join('\n\n'),
-      useSpacing: true,
-    },
+    { class: 'DepictionMarkdownView', markdown: [d.summary, d.details].filter(Boolean).join('\n\n'), useSpacing: true },
   ]
   if (d.screenshots.length) {
     details.push({
@@ -67,6 +62,7 @@ export function renderSileoDepiction(input: DepictionInput, config: RepoConfig):
     { class: 'DepictionTableTextView', title: 'Version', text: d.version },
     { class: 'DepictionTableTextView', title: 'Author', text: d.author },
   )
+  if (d.testedOn) details.push({ class: 'DepictionTableTextView', title: 'Tested on', text: d.testedOn })
   if (d.compat) details.push({ class: 'DepictionTableTextView', title: 'Compatibility', text: d.compat })
   if (d.sourceUrl) {
     details.push({ class: 'DepictionTableButtonView', title: 'Source Code', action: d.sourceUrl, openExternal: true })

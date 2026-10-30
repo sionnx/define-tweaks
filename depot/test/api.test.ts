@@ -170,9 +170,15 @@ describe('发布流程', () => {
     expect(res.status).toBe(200)
     expect(await text('/Packages')).toContain(`Icon: ${BASE}/${key}\n`)
 
-    // 实测版本显示在描述页简介下方
-    const sileo = JSON.parse(await text('/depictions/to.define.dockpages.json'))
-    expect(sileo.tabs[0].views[0].markdown).toBe('Paged, swipeable dock with 8 icons (2 pages x 4).\n\nTested on iOS 17.3')
+    // 实测版本作为信息表格中的一行，紧跟在 Author 之后
+    const views = JSON.parse(await text('/depictions/to.define.dockpages.json')).tabs[0].views
+    expect(views[0].markdown).toBe('Paged, swipeable dock with 8 icons (2 pages x 4).')
+    const rows = views.filter((v: { class: string }) => v.class === 'DepictionTableTextView')
+    expect(rows.map((r: { title: string; text: string }) => [r.title, r.text])).toEqual([
+      ['Version', '0.1.0'],
+      ['Author', 'Sion'],
+      ['Tested on', 'iOS 17.3'],
+    ])
 
     // 未知字段被拒绝
     res = await call('/api/v1/packages/to.define.dockpages/meta', {
