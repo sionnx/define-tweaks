@@ -1,0 +1,45 @@
+name: Setup roothide Theos
+description: 安装 roothide/theos、iOS SDK 与构建依赖（GNU make、ldid）
+
+inputs:
+  sdk:
+    description: 要安装的 SDK（来自 theos/sdks）
+    default: iPhoneOS16.5
+
+runs:
+  using: composite
+  steps:
+    - name: Install build tools
+      shell: bash
+      run: |
+        brew install ldid make xz
+        # Theos 需要 GNU make 4，macOS 自带的是 3.81
+        echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+    - name: Resolve roothide/theos revision
+      id: rev
+      shell: bash
+      run: echo "sha=$(git ls-remote https://github.com/roothide/theos HEAD | cut -f1)" >> "$GITHUB_OUTPUT"
+
+    # 插件 Makefile 默认使用 ~/theos-roothide，这里安装到同一位置
+    - name: Cache Theos
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/theos-roothide
+        key: theos-roothide-${{ steps.rev.outputs.sha }}-${{ inputs.sdk }}
+
+    - name: Install Theos and SDK
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        # install-sdk 调用 GitHub API，带上 token 避免限流
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        THEOS="$HOME/theos-roothide"
+        git clone --recursive --depth 1 --shallow-submodules https://github.com/roothide/theos "$THEOS"
+        THEOS="$THEOS" "$THEOS/bin/install-sdk" "${{ inputs.sdk }}"
+
+    - name: Export THEOS
+      shell: bash
+      run: echo "THEOS=$HOME/theos-roothide" >> "$GITHUB_ENV"

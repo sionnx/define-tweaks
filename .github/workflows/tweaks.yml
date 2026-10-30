@@ -1,0 +1,103 @@
+name: Tweaks
+
+# - 推送到 main / PR：编译所有插件，确认能打包
+# - 推送 <插件名>@<版本> 的 tag（如 dockreel@0.1.0）：编译该插件并发布到 apt.define.to
+on:
+  push:
+    branches: [main]
+    tags: ['*@*']
+    paths:
+      - tweaks/**
+      - .github/actions/setup-theos/**
+      - .github/workflows/tweaks.yml
+  pull_request:
+    paths:
+      - tweaks/**
+      - .github/actions/setup-theos/**
+      - .github/workflows/tweaks.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref_type != 'tag'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-theos
+
+      - name: Build all tweaks
+        run: |
+          for dir in tweaks/*/; do
+            [[ -f $dir/Makefile ]] || continue
+            echo "::group::${dir%/}"
+            make -C "$dir" package FINALPACKAGE=1
+            echo "::endgroup::"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: tweaks/*/packages/*.deb
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      # 向 GitHub 申请 OIDC token，depot 用它验证发布来源
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve tweak from tag
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          name=${TAG%@*}
+          version=${TAG#*@}
+          # tag 用小写插件名，目录名大小写不限
+          dir=$(find tweaks -mindepth 1 -maxdepth 1 -type d | while read -r d; do
+            [[ $(basename "$d" | tr '[:upper:]' '[:lower:]') == "$name" ]] && echo "$d"
+          done)
+          [[ -n $dir ]] || { echo "::error::找不到插件目录：tweaks/$name"; exit 1; }
+
+          control_version=$(sed -n 's/^Version: *//p' "$dir/control")
+          if [[ $control_version != "$version" ]]; then
+            echo "::error::tag 版本 $version 与 $dir/control 中的 $control_version 不一致"
+            exit 1
+          fi
+
+          # 注释 tag 的说明作为 changelog；轻量 tag 则取提交信息
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          {
+            echo "dir=$dir"
+            echo "changelog<<EOF"
+            git for-each-ref "refs/tags/$TAG" --format='%(contents)' | sed '/^-----BEGIN PGP SIGNATURE-----/,$d'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/setup-theos
+
+      - name: Build package
+        run: make -C "${{ steps.tag.outputs.dir }}" package FINALPACKAGE=1
+
+      - name: Publish to apt.define.to
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+          CHANGELOG: ${{ steps.tag.outputs.changelog }}
+        run: |
+          DEPOT_TOKEN=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=apt.define.to" | jq -r .value)
+          export DEPOT_TOKEN
+          for deb in "$DIR"/packages/*.deb; do
+            scripts/publish.sh "$deb" "$CHANGELOG"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.ref_name }}
+          path: ${{ steps.tag.outputs.dir }}/packages/*.deb

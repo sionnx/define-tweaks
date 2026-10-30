@@ -1,0 +1,40 @@
+name: Depot
+
+# 只做类型检查和测试；部署由 Cloudflare Workers Builds 在 main 更新后自动完成
+on:
+  push:
+    branches: [main]
+    paths:
+      - depot/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/depot.yml
+  pull_request:
+    paths:
+      - depot/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/depot.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: depot
+    steps:
+      - uses: actions/checkout@v5
+      # 版本取自根 package.json 的 packageManager
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
