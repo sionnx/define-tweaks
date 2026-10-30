@@ -1,0 +1,17 @@
+# Firmware references (large, re-downloadable from Apple)
+/references/ipsws/
+
+# Theos build output
+.theos/
+packages/
+*.deb
+.DS_Store
+
+# Node / Wrangler
+node_modules/
+.wrangler/
+dist/
+.dev.vars
+
+# depot 测试用的 deb 样本需要提交
+!depot/test/fixtures/*.deb

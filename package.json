@@ -1,0 +1,10 @@
+{
+  "name": "define-tweaks",
+  "private": true,
+  "packageManager": "pnpm@11.24.0",
+  "scripts": {
+    "depot:dev": "pnpm -C depot dev",
+    "depot:test": "pnpm -C depot test",
+    "depot:deploy": "pnpm -C depot deploy"
+  }
+}

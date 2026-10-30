@@ -1,0 +1,7 @@
+packages:
+  - depot
+  - cli
+
+allowBuilds:
+  esbuild: true
+  workerd: true
