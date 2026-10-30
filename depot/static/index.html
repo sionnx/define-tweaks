@@ -47,13 +47,18 @@
     .then((list) => {
       const box = document.getElementById('packages')
       if (!list.length) { box.innerHTML = '<p class="muted">No packages yet.</p>'; return }
+      // iPhone / iPad 上包名链接到 Sileo；其他设备只显示文字
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
       const ul = document.createElement('ul')
       for (const item of list) {
         const li = document.createElement('li')
-        const a = document.createElement('a')
-        a.href = `/depictions/${item.package}.html`
-        a.textContent = item.meta?.name || item.latest.control.Name || item.package
-        li.append(a, ` — ${item.latest.version}`)
+        const name = document.createElement(ios ? 'a' : 'strong')
+        if (ios) name.href = `sileo://package/${encodeURIComponent(item.package)}`
+        name.textContent = item.meta?.name || item.latest.control.Name || item.package
+        const summary = document.createElement('p')
+        summary.className = 'muted'
+        summary.textContent = (item.latest.control.Description || '').split('\n')[0]
+        li.append(name, ` — ${item.latest.version}`, summary)
         ul.append(li)
       }
       box.replaceChildren(ul)

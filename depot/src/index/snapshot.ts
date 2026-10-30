@@ -1,7 +1,7 @@
 import { gzip } from '../deb/decompress'
 import { digest } from '../deb/index'
 import type { PackageMeta, PackageRecord, RepoConfig } from '../env'
-import { renderHtmlDepiction, renderSileoDepiction } from '../render/depiction'
+import { renderSileoDepiction } from '../render/depiction'
 import { renderPackages } from '../render/packages'
 import { type IndexFile, renderRelease } from '../render/release'
 
@@ -52,7 +52,7 @@ export async function deleteSnapshots(bucket: R2Bucket, gens: number[]): Promise
   if (keys.length) await bucket.delete(keys)
 }
 
-// 为每个仍有在架版本的包重新生成描述页
+// 为每个仍有在架版本的包重新生成描述页（只有 Sileo 原生 JSON）
 export async function writeDepictions(
   bucket: R2Bucket,
   records: PackageRecord[],
@@ -67,9 +67,8 @@ export async function writeDepictions(
         bucket.put(`depictions/${pkg}.json`, renderSileoDepiction(input, config), {
           httpMetadata: { contentType: 'application/json; charset=utf-8' },
         }),
-        bucket.put(`depictions/${pkg}.html`, renderHtmlDepiction(input, config), {
-          httpMetadata: { contentType: 'text/html; charset=utf-8' },
-        }),
+        // 清理以前生成的 HTML 描述页
+        bucket.delete(`depictions/${pkg}.html`),
       ]
     }),
   )

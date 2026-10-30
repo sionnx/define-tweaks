@@ -53,6 +53,7 @@ describe('发布流程', () => {
     expect(packages).toContain(`SHA256: ${debHash}\n`)
     expect(packages).toContain(`Size: ${deb.byteLength}\n`)
     expect(packages).toContain(`SileoDepiction: ${BASE}/depictions/to.define.dockpages.json`)
+    expect(packages).not.toMatch(/^Depiction:/m)
 
     // Packages.gz 解压后与 Packages 一致；Release 里记录的哈希正确
     const gz = new Uint8Array(await (await call('/Packages.gz')).arrayBuffer())
@@ -67,7 +68,8 @@ describe('发布流程', () => {
     const sileo = JSON.parse(await text('/depictions/to.define.dockpages.json'))
     expect(sileo.class).toBe('DepictionTabView')
     expect(JSON.stringify(sileo)).toContain('First release')
-    expect(await text('/depictions/to.define.dockpages.html')).toContain('<title>DockPages</title>')
+    // 不再生成 HTML 描述页
+    expect((await call('/depictions/to.define.dockpages.html')).status).toBe(404)
 
     // multipart 发布第二个包（rootless，带 epoch），同时写入元数据
     const form = new FormData()

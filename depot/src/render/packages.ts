@@ -2,6 +2,7 @@ import { compareVersions, serializeControl } from '../deb'
 import type { PackageMeta, PackageRecord, RepoConfig } from '../env'
 
 // 由服务端生成、会覆盖 deb 自带同名字段的字段
+// 不生成 HTML 描述页，deb 自带的 Depiction 也一并去掉，避免指向无效或过时的页面
 const GENERATED = new Set(['filename', 'size', 'md5sum', 'sha1', 'sha256', 'icon', 'depiction', 'sileodepiction', 'header'])
 
 export function sortRecords(records: PackageRecord[]): PackageRecord[] {
@@ -27,7 +28,6 @@ export function renderPackages(records: PackageRecord[], meta: Map<string, Packa
     control.SHA256 = record.sha256
     if (info?.icon) control.Icon = absolute(info.icon, config)
     if (info?.header) control.Header = absolute(info.header, config)
-    control.Depiction = `${config.publicUrl}/depictions/${record.package}.html`
     control.SileoDepiction = `${config.publicUrl}/depictions/${record.package}.json`
     return serializeControl(control)
   })

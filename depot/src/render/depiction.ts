@@ -20,7 +20,6 @@ function summarize({ meta, records }: DepictionInput, config: RepoConfig) {
   const versions = [...new Map(sorted.map((r) => [r.version, r])).values()].reverse()
   return {
     pkg: latest.package,
-    name: meta?.name ?? field(latest.control, 'Name') ?? latest.package,
     author: field(latest.control, 'Author') ?? field(latest.control, 'Maintainer') ?? '',
     version: latest.version,
     summary,
@@ -93,51 +92,4 @@ export function renderSileoDepiction(input: DepictionInput, config: RepoConfig):
     null,
     2,
   )
-}
-
-// Zebra / Cydia / 浏览器使用的 HTML 描述页
-export function renderHtmlDepiction(input: DepictionInput, config: RepoConfig): string {
-  const d = summarize(input, config)
-  const rows: [string, string][] = [
-    ['Version', d.version],
-    ['Author', d.author],
-    ['Jailbreak', d.archs.map((a) => ARCH_LABEL[a] ?? a).join(', ')],
-  ]
-  if (d.compat) rows.push(['Compatibility', d.compat])
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(d.name)}</title>
-<style>
-:root { color-scheme: light dark; --bg: #f2f2f7; --card: #fff; --fg: #1c1c1e; --muted: #6e6e73; --tint: ${TINT}; }
-@media (prefers-color-scheme: dark) { :root { --bg: #000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #98989f; } }
-body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, system-ui, sans-serif; }
-.card { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
-h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 13px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
-p { margin: 0 0 8px; white-space: pre-wrap; } .muted { color: var(--muted); }
-.shots { display: flex; gap: 10px; overflow-x: auto; } .shots img { height: 320px; border-radius: 8px; }
-table { width: 100%; border-collapse: collapse; } td { padding: 6px 0; } td:last-child { text-align: right; color: var(--muted); }
-tr + tr td { border-top: 1px solid color-mix(in srgb, var(--muted) 25%, transparent); }
-a { color: var(--tint); } .log + .log { margin-top: 10px; }
-</style>
-</head>
-<body>
-<div class="card"><h1>${esc(d.name)}</h1><p class="muted">${esc(d.summary)}</p>${d.details ? `<p>${esc(d.details)}</p>` : ''}</div>
-${d.screenshots.length ? `<div class="card shots">${d.screenshots.map((s) => `<img src="${esc(s)}" alt="Screenshot">`).join('')}</div>` : ''}
-<div class="card"><h2>Information</h2><table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>${
-    d.sourceUrl ? `<p style="margin-top:8px"><a href="${esc(d.sourceUrl)}">Source Code</a></p>` : ''
-  }</div>
-<div class="card"><h2>Changelog</h2>${d.changelog
-    .map((c) => `<div class="log"><strong>${esc(c.version)}</strong> <span class="muted">${c.date}</span><p>${esc(c.text || '—')}</p></div>`)
-    .join('')}</div>
-</body>
-</html>
-`
-}
-
-function esc(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 }
