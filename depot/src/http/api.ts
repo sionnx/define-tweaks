@@ -39,6 +39,7 @@ const metaPatch = z
     screenshots: z.array(z.string().max(500)).max(20),
     minIos: z.string().regex(/^\d+(\.\d+){0,2}$/),
     maxIos: z.string().regex(/^\d+(\.\d+){0,2}$/),
+    testedOn: z.string().min(1).max(60),
     tags: z.array(z.string().max(40)).max(20),
     sourceUrl: z.url(),
   })

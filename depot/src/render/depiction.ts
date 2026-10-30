@@ -25,7 +25,7 @@ function summarize({ meta, records }: DepictionInput, config: RepoConfig) {
     version: latest.version,
     summary,
     details: long.join('\n').trim(),
-    archs: [...new Set(sorted.filter((r) => r.version === latest.version).map((r) => r.arch))],
+    testedOn: meta?.testedOn,
     compat: compatibility(meta),
     screenshots: (meta?.screenshots ?? []).map((s) => absolute(s, config)),
     header: meta?.header ? absolute(meta.header, config) : undefined,
@@ -43,17 +43,16 @@ function compatibility(meta: PackageMeta | undefined): string | undefined {
   return `iOS ${meta.minIos ?? '?'} – ${meta.maxIos ?? '?'}`
 }
 
-const ARCH_LABEL: Record<string, string> = {
-  'iphoneos-arm64e': 'roothide',
-  'iphoneos-arm64': 'rootless',
-  'iphoneos-arm': 'rootful',
-}
-
 // Sileo 原生描述页
 export function renderSileoDepiction(input: DepictionInput, config: RepoConfig): string {
   const d = summarize(input, config)
   const details: unknown[] = [
-    { class: 'DepictionMarkdownView', markdown: [d.summary, d.details].filter(Boolean).join('\n\n'), useSpacing: true },
+    {
+      class: 'DepictionMarkdownView',
+      // 实测过的系统版本跟在简介后面单独一段
+      markdown: [d.summary, d.details, d.testedOn && `Tested on ${d.testedOn}`].filter(Boolean).join('\n\n'),
+      useSpacing: true,
+    },
   ]
   if (d.screenshots.length) {
     details.push({
@@ -67,7 +66,6 @@ export function renderSileoDepiction(input: DepictionInput, config: RepoConfig):
     { class: 'DepictionSeparatorView' },
     { class: 'DepictionTableTextView', title: 'Version', text: d.version },
     { class: 'DepictionTableTextView', title: 'Author', text: d.author },
-    { class: 'DepictionTableTextView', title: 'Jailbreak', text: d.archs.map((a) => ARCH_LABEL[a] ?? a).join(', ') },
   )
   if (d.compat) details.push({ class: 'DepictionTableTextView', title: 'Compatibility', text: d.compat })
   if (d.sourceUrl) {

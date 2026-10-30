@@ -43,6 +43,8 @@ export interface PackageMeta {
   screenshots?: string[]
   minIos?: string
   maxIos?: string
+  // 实测过的环境，如 "iOS 17.3"，显示在描述页简介下方
+  testedOn?: string
   tags?: string[]
   sourceUrl?: string
   updatedAt?: number
