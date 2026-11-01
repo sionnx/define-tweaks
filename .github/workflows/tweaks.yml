@@ -93,6 +93,8 @@ jobs:
           DEPOT_TOKEN=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=apt.define.to" | jq -r .value)
           export DEPOT_TOKEN
+          # Pin the Source Code link to the commit this release was built from
+          export SOURCE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$(git rev-parse HEAD)/$DIR"
           for deb in "$DIR"/packages/*.deb; do
             scripts/publish.sh "$deb" "$CHANGELOG"
           done

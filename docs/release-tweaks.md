@@ -57,6 +57,8 @@ git tag -a dockreel@0.2.0 -m "Add free scrolling mode
 git push origin dockreel@0.2.0
 ```
 
+CI sets the package's Source Code link to the tagged commit (`https://github.com/sionnx/define-tweaks/tree/<full-sha>/tweaks/<Tweak>`), so it always points at the source of the latest release.
+
 Then watch the `Tweaks` workflow run on GitHub Actions and make sure the `release` job succeeds:
 
 ```bash
@@ -108,8 +110,10 @@ If GitHub Actions is unavailable, the same script CI uses can publish from your 
 
 > **For agents:** manual publishing is a fallback, not an alternative path. Never switch to it on your own when CI fails. Explain why the release cannot go through CI, ask the user whether to publish manually, and run the script only after the user explicitly approves.
 
+`SOURCE_URL` is required and must be pinned to the full SHA of the commit you built, never a branch or tag name. The script refuses a URL without a full SHA. Check out and push that commit first, so the link resolves and `git rev-parse HEAD` gives the right SHA:
+
 ```bash
-DEPOT_TOKEN=$(security find-generic-password -s apt.define.to -a ADMIN_TOKEN -w) scripts/publish.sh tweaks/DockReel/packages/to.define.dockreel_0.2.0_iphoneos-arm64e.deb "Add free scrolling mode"
+DEPOT_TOKEN=$(security find-generic-password -s apt.define.to -a ADMIN_TOKEN -w) SOURCE_URL=https://github.com/sionnx/define-tweaks/tree/$(git rev-parse HEAD)/tweaks/DockReel scripts/publish.sh tweaks/DockReel/packages/to.define.dockreel_0.2.0_iphoneos-arm64e.deb "Add free scrolling mode"
 ```
 
 Still tag the release afterwards so the git history matches what was published.
