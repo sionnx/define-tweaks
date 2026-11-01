@@ -1,6 +1,6 @@
 Package: to.define.dockreel
 Name: DockReel
-Version: 0.1.0
+Version: 0.1.1
 Architecture: iphoneos-arm64
 Description: Scrollable dock with more than 4 icons, in paged or free scrolling mode.
 Maintainer: Sion
