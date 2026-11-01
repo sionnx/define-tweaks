@@ -18,15 +18,15 @@
 			<key>key</key>
 			<string>Enabled</string>
 			<key>label</key>
-			<string>ENABLED</string>
+			<string>Enabled</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>SCROLL_MODE</string>
+			<string>Scroll Mode</string>
 			<key>footerText</key>
-			<string>FOOTER</string>
+			<string>Changes take effect after a respring.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -44,8 +44,8 @@
 			</array>
 			<key>validTitles</key>
 			<array>
-				<string>PAGED</string>
-				<string>FREE</string>
+				<string>Paged</string>
+				<string>Free</string>
 			</array>
 		</dict>
 	</array>

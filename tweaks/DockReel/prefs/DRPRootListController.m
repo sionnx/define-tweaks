@@ -1,9 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "DRPRootListController.h"
 
-// Localized strings come from the bundle's Root.strings (shared with Root.plist)
-#define DRPLocalized(key) NSLocalizedStringFromTableInBundle(key, @"Root", [NSBundle bundleForClass:[DRPRootListController class]], nil)
-
 @implementation DRPRootListController
 
 - (NSArray *)specifiers {
@@ -17,11 +14,11 @@
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
 	[super setPreferenceValue:value specifier:specifier];
 
-	UIAlertController *alert = [UIAlertController alertControllerWithTitle:DRPLocalized(@"RESPRING_TITLE")
-		message:DRPLocalized(@"RESPRING_MESSAGE")
+	UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Respring Required"
+		message:@"SpringBoard needs to restart for this change to take effect. Respring now?"
 		preferredStyle:UIAlertControllerStyleAlert];
-	[alert addAction:[UIAlertAction actionWithTitle:DRPLocalized(@"LATER") style:UIAlertActionStyleCancel handler:nil]];
-	[alert addAction:[UIAlertAction actionWithTitle:DRPLocalized(@"RESPRING") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+	[alert addAction:[UIAlertAction actionWithTitle:@"Later" style:UIAlertActionStyleCancel handler:nil]];
+	[alert addAction:[UIAlertAction actionWithTitle:@"Respring" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
 		// The tweak inside SpringBoard restarts it when the notification arrives
 		CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
 			CFSTR("to.define.dockreel/respring"), NULL, NULL, true);
