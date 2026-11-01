@@ -1,5 +1,5 @@
-# Firmware references (large, re-downloadable from Apple)
-/references/ipsws/
+# Local reference material
+references/
 
 # Theos build output
 .theos/
