@@ -7,6 +7,8 @@ packages/
 *.deb
 .DS_Store
 
+analysis/
+
 # Node / Wrangler
 node_modules/
 .wrangler/
