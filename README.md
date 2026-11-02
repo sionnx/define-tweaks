@@ -19,6 +19,7 @@ Or open [apt.define.to](https://apt.define.to) on your device and tap **Add to S
 | Tweak | Description |
 |---|---|
 | [DockReel](tweaks/DockReel) | Scrollable dock with more than 4 icons, in paged or free scrolling mode. |
+| [AppStoreControl](tweaks/AppStoreControl) | Browse an app's App Store version history and downgrade to any build Apple still serves. |
 
 ## Repository layout
 

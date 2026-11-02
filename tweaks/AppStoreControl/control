@@ -1,0 +1,9 @@
+Package: to.define.appstorecontrol
+Name: AppStoreControl
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Browse an app's App Store version history and downgrade to any version from the App Store itself.
+Maintainer: Sion
+Author: Sion
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0)
