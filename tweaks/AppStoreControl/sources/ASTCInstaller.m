@@ -1,7 +1,7 @@
 #import "ASTCInstaller.h"
 #import "ASTCStoreServices.h"
 #import "ASTCStoreClient.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 
 @implementation ASTCInstaller
 
@@ -36,18 +36,18 @@
         ASTCStoreClient *client = [ASTCStoreClient sharedInstance];
         [client refreshInstalledInfoForBundleID:bundleId completion:^(NSDictionary *info) {
             NSString *installedExternal = [client externalVersionIDForBundleID:bundleId];
-            ASTCLog(@"verify %@: installed version=%@ ext=%@ wanted=%@",
+            XLog(@"Install", @"verify %@: installed version=%@ ext=%@ wanted=%@",
                    bundleId, [client installedVersionForBundleID:bundleId],
                    installedExternal, version.externalVersionId);
             if ([installedExternal isEqualToString:version.externalVersionId]) {
-                ASTCLog(@"install verified: %@ now at %@ (%@)", bundleId, version.displayVersion, installedExternal);
+                XLog(@"Install", @"install verified: %@ now at %@ (%@)", bundleId, version.displayVersion, installedExternal);
                 if (completion) {
                     completion(YES);
                 }
                 return;
             }
             if ([deadline timeIntervalSinceNow] <= 0) {
-                ASTCLog(@"install verification timed out: %@ still at %@ (wanted %@)",
+                XLog(@"Install", @"install verification timed out: %@ still at %@ (wanted %@)",
                        bundleId, installedExternal, version.externalVersionId);
                 if (completion) {
                     completion(NO);
@@ -82,7 +82,7 @@
 
     NSString *displayName = product.name ?: product.bundleId;
     [[ASTCStoreClient sharedInstance] refreshInstalledInfoForBundleID:product.bundleId completion:nil];
-    ASTCLog(@"install request: %@ %@ (%@); installed is %@",
+    XLog(@"Install", @"install request: %@ %@ (%@); installed is %@",
            displayName, version.displayVersion, version.externalVersionId,
            [[ASTCStoreClient sharedInstance] installedVersionForBundleID:product.bundleId] ?: @"unknown");
 
@@ -103,12 +103,12 @@
         BOOL noResponse = [localError.domain isEqualToString:@"to.define.appstorecontrol.store"]
             && localError.code == ASTCStoreNoResponseErrorCode;
         if (localError && !noResponse) {
-            ASTCLog(@"local redownload install unavailable: %@", localError.localizedDescription);
+            XLog(@"Install", @"local redownload install unavailable: %@", localError.localizedDescription);
             [weakSelf installWithPurchasePath:version product:product completion:completion];
             return;
         }
         if (noResponse) {
-            ASTCLog(@"local redownload install got no response; not sending another request");
+            XLog(@"Install", @"local redownload install got no response; not sending another request");
         }
         if (completion) {
             completion(nil);

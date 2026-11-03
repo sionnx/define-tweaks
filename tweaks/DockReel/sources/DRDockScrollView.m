@@ -38,9 +38,7 @@
 // Free scrolling mode: one screen holds 4 slots; each extra slot adds one slot pitch to the content
 - (void)dr_setSlotCount:(NSInteger)count pitch:(CGFloat)pitch animated:(BOOL)animated {
 	count = MAX(1, MIN(count, DR_MAX_ICONS));
-#if DR_DEBUG
-	if (count != self.slotCount) DRLog(@"slotCount %ld -> %ld (offset %.1f)", (long)self.slotCount, (long)count, self.contentOffset.x);
-#endif
+	if (count != self.slotCount) XLog(@"Scroll", @"slotCount %ld -> %ld (offset %.1f)", (long)self.slotCount, (long)count, self.contentOffset.x);
 	self.slotCount = count;
 	self.scrollEnabled = count > DR_ICONS_PER_PAGE;
 	CGFloat width = CGRectGetWidth(self.bounds);
@@ -58,9 +56,7 @@
 
 - (void)dr_setPageCount:(NSInteger)count animated:(BOOL)animated {
 	count = MAX(1, MIN(count, DR_MAX_PAGES));
-#if DR_DEBUG
-	if (count != self.pageCount) DRLog(@"pageCount %ld -> %ld (offset %.1f)", (long)self.pageCount, (long)count, self.contentOffset.x);
-#endif
+	if (count != self.pageCount) XLog(@"Scroll", @"pageCount %ld -> %ld (offset %.1f)", (long)self.pageCount, (long)count, self.contentOffset.x);
 	self.pageCount = count;
 	self.scrollEnabled = count > 1;
 	CGFloat pageWidth = CGRectGetWidth(self.bounds);
@@ -95,9 +91,7 @@
 		direction = 1;
 	}
 	if (direction == self.edgeDirection) return;
-#if DR_DEBUG
-	DRLog(@"edge direction %ld at x=%.1f (width %.1f)", (long)direction, point.x, width);
-#endif
+	XLog(@"Scroll", @"edge direction %ld at x=%.1f (width %.1f)", (long)direction, point.x, width);
 
 	[self.edgeTimer invalidate];
 	self.edgeTimer = nil;
@@ -112,9 +106,7 @@
 
 - (void)dr_edgeTimerFired:(NSTimer *)timer {
 	NSInteger target = self.currentPage + self.edgeDirection;
-#if DR_DEBUG
-	DRLog(@"edge turn %ld -> %ld", (long)self.currentPage, (long)target);
-#endif
+	XLog(@"Scroll", @"edge turn %ld -> %ld", (long)self.currentPage, (long)target);
 	// A drag can end without any drop callback reaching us (e.g. cancelled by
 	// going home); never keep turning pages once the dock is no longer editing.
 	BOOL editing = [self.listView respondsToSelector:@selector(isEditing)] && [self.listView isEditing];
@@ -138,9 +130,7 @@
 	self.edgeSpeed = speed;
 
 	if (speed != 0 && !self.edgeLink) {
-#if DR_DEBUG
-		DRLog(@"free edge scroll start speed=%.0f at x=%.1f", speed, point.x);
-#endif
+		XLog(@"Scroll", @"free edge scroll start speed=%.0f at x=%.1f", speed, point.x);
 		self.edgeLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(dr_edgeLinkFired:)];
 		[self.edgeLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 	} else if (speed == 0 && self.edgeLink) {

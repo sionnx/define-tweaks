@@ -64,9 +64,7 @@ static BOOL DRHasRequiredMethods(void) {
 		Class cls = objc_getClass(required[i].className);
 		if ([cls instancesRespondToSelector:sel_registerName(required[i].selectorName)]) continue;
 		complete = NO;
-#if DR_DEBUG
-		DRLog(@"compat: missing -[%s %s]", required[i].className, required[i].selectorName);
-#endif
+		XLog(@"Compat", @"compat: missing -[%s %s]", required[i].className, required[i].selectorName);
 	}
 	return complete;
 }
@@ -79,9 +77,7 @@ BOOL DRCompatPrepare(void) {
 		gSpacingAPI = DRSpacingAPILegacy;
 	}
 	BOOL supported = DRHasRequiredMethods() && gSpacingAPI != DRSpacingAPINone;
-#if DR_DEBUG
-	DRLog(@"compat: %@ spacingAPI=%ld supported=%d", NSProcessInfo.processInfo.operatingSystemVersionString,
+	XLog(@"Compat", @"compat: %@ spacingAPI=%ld supported=%d", NSProcessInfo.processInfo.operatingSystemVersionString,
 		(long)gSpacingAPI, supported);
-#endif
 	return supported;
 }

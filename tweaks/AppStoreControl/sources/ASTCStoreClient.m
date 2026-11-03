@@ -6,7 +6,7 @@
 #import "ASTCStoreClient.h"
 #import "ASTCStoreServices.h"
 #import "ASTCPackageInfoReader.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 #import "ASTCUtils.h"
 
 #import <dlfcn.h>
@@ -209,7 +209,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 - (void)resolveNext
 {
     if (self.lookup.cancelled) {
-        ASTCLog(@"version lookup cancelled for %@ after %lu probes", self.product.adamId, (unsigned long)self.index);
+        XLog(@"Store", @"version lookup cancelled for %@ after %lu probes", self.product.adamId, (unsigned long)self.index);
         [self finish];
         return;
     }
@@ -229,7 +229,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         if (!strongSelf) {
             return;
         }
-        ASTCLog(@"probe %lu/%lu ext=%@ took %.2fs -> %@",
+        XLog(@"Store", @"probe %lu/%lu ext=%@ took %.2fs -> %@",
                (unsigned long)strongSelf.index, (unsigned long)strongSelf.pending.count, identifier,
                CFAbsoluteTimeGetCurrent() - probeStart,
                version.displayVersion.length ? version.displayVersion : @"failed");
@@ -304,7 +304,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         [self.skipped addObject:older];
         count++;
     }
-    ASTCLog(@"ext=%@ is no longer served; skipping %lu older builds", identifier, (unsigned long)count);
+    XLog(@"Store", @"ext=%@ is no longer served; skipping %lu older builds", identifier, (unsigned long)count);
 }
 
 /// Reads the build's Info.plist from its IPA (a few range requests against
@@ -346,7 +346,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 - (void)finish
 {
     CFAbsoluteTime elapsed = CFAbsoluteTimeGetCurrent() - self.startTime;
-    ASTCLog(@"probing took %.2fs: %lu probes, %lu failed, avg %.2fs/probe",
+    XLog(@"Store", @"probing took %.2fs: %lu probes, %lu failed, avg %.2fs/probe",
            elapsed, (unsigned long)self.index, (unsigned long)self.failureCount,
            self.index ? elapsed / self.index : 0);
     BOOL waiting = NO;
@@ -355,7 +355,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         waiting = self.pendingReads > 0;
     }
     if (waiting) {
-        ASTCLog(@"waiting for %lu Info.plist reads", (unsigned long)self.pendingReads);
+        XLog(@"Store", @"waiting for %lu Info.plist reads", (unsigned long)self.pendingReads);
         return;
     }
     [self complete];
@@ -370,7 +370,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         }
         self.finished = YES;
     }
-    ASTCLog(@"version resolution took %.2fs including Info.plist reads", CFAbsoluteTimeGetCurrent() - self.startTime);
+    XLog(@"Store", @"version resolution took %.2fs including Info.plist reads", CFAbsoluteTimeGetCurrent() - self.startTime);
     @synchronized(self.resolved) {
         // Another chooser may have written the file while this one probed;
         // keep its entries instead of overwriting them with a smaller set.
@@ -458,10 +458,10 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
         installID = [app valueForKey:@"installID"];
         installError = [app valueForKey:@"installError"];
     } @catch (NSException *exception) {
-        ASTCLog(@"install progress for %@: unreadable (%@)", bundleId, exception.reason);
+        XLog(@"Store", @"install progress for %@: unreadable (%@)", bundleId, exception.reason);
         return;
     }
-    ASTCLog(@"install progress for %@: phase=%@ placeholder=%@ installID=%@ progress=%@ download=%@ install=%@ postProcess=%@ error=%@",
+    XLog(@"Store", @"install progress for %@: phase=%@ placeholder=%@ installID=%@ progress=%@ download=%@ install=%@ postProcess=%@ error=%@",
            bundleId, phase, placeholder, installID,
            ASTCProgressSummary(app, @"progress"), ASTCProgressSummary(app, @"downloadProgress"),
            ASTCProgressSummary(app, @"installProgress"), ASTCProgressSummary(app, @"postProcessProgress"),
@@ -541,7 +541,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
         }
         ASTCInstallState state = error ? ASTCInstallStateUnknown
                                       : (found ? ASTCInstallStateInstalled : ASTCInstallStateNotInstalled);
-        ASTCLog(@"appstored info for %@: %@ (state=%ld error=%@)", bundleId, info, (long)state, error);
+        XLog(@"Store", @"appstored info for %@: %@ (state=%ld error=%@)", bundleId, info, (long)state, error);
         if (info.count) {
             self.installedInfoCache[bundleId] = info;
         } else if (state == ASTCInstallStateNotInstalled) {
@@ -555,7 +555,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         if (!finished) {
             finished = YES;
-            ASTCLog(@"appstored info query timed out for %@", bundleId);
+            XLog(@"Store", @"appstored info query timed out for %@", bundleId);
             completion(ASTCInstallStateUnknown, nil);
         }
     });
@@ -921,7 +921,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
         // missing app gets no store request at all.
         [self queryInstallStateForBundleID:product.bundleId completion:^(ASTCInstallState state, __unused NSDictionary *info) {
             if (state != ASTCInstallStateInstalled) {
-                ASTCLog(@"version lookup skipped for %@: reason=%@", product.bundleId,
+                XLog(@"Store", @"version lookup skipped for %@: reason=%@", product.bundleId,
                        state == ASTCInstallStateNotInstalled ? @"app not installed" : @"install state unknown");
                 completion(product, ASTCClientError(ASTCStoreClientInstallStateErrorCode, state == ASTCInstallStateNotInstalled
                     ? @"Version history is only available for installed apps."
@@ -934,7 +934,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
             if (!product.installedExternalVersionId && product.bundleId.length) {
                 product.installedExternalVersionId = [self externalVersionIDForBundleID:product.bundleId];
             }
-            ASTCLog(@"local app state: bundleId=%@ installedVersion=%@ installedExt=%@",
+            XLog(@"Store", @"local app state: bundleId=%@ installedVersion=%@ installedExt=%@",
                    product.bundleId, product.installedDisplayVersion, product.installedExternalVersionId);
             if (lookup.cancelled) {
                 completion(product, ASTCClientError(10, @"The version lookup was cancelled."));
@@ -978,7 +978,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
 
     // Show the last session's resolved versions while the list loads.
     if (progress && cachedProduct.versions.count) {
-        ASTCLog(@"showing %lu cached versions for %@", (unsigned long)cachedProduct.versions.count, product.adamId);
+        XLog(@"Store", @"showing %lu cached versions for %@", (unsigned long)cachedProduct.versions.count, product.adamId);
         progress(0, 0, product, ASTCSortedVersions(cachedProduct));
     }
 
@@ -1094,7 +1094,7 @@ static void ASTCLogInstallProgress(id app, NSString *bundleId)
             cachedCount++;
         }
     }
-    ASTCLog(@"version list for %@: total=%lu cached=%lu probing=%lu pricing=%@",
+    XLog(@"Store", @"version list for %@: total=%lu cached=%lu probing=%lu pricing=%@",
            product.adamId, (unsigned long)identifiers.count, (unsigned long)cachedCount,
            (unsigned long)pending.count, pricingParameters);
 

@@ -5,6 +5,8 @@ Write README.md and comments in English, and always answer my questions in Chine
 
 Write code according to the best long-term solution.
 
+When developing a tweak, follow [docs/develop-tweaks.md](docs/develop-tweaks.md).
+
 When releasing a tweak, follow [docs/release-tweaks.md](docs/release-tweaks.md).
 
 

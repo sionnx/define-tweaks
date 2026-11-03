@@ -8,11 +8,13 @@ on:
     tags: ['*@*']
     paths:
       - tweaks/**
+      - shared/**
       - .github/actions/setup-theos/**
       - .github/workflows/tweaks.yml
   pull_request:
     paths:
       - tweaks/**
+      - shared/**
       - .github/actions/setup-theos/**
       - .github/workflows/tweaks.yml
 

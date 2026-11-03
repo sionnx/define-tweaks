@@ -21,6 +21,10 @@ AppStoreControl_CFLAGS = -fobjc-arc -Iinclude -Wno-deprecated-declarations -Wno-
 AppStoreControl_FRAMEWORKS = UIKit Foundation CoreGraphics Security
 AppStoreControl_LIBRARIES = substrate z
 
+# The tweak menu opens the log, so release builds keep logging.
+XLOG_RELEASE = 1
+include ../../shared/XLog/XLog.mk
+
 include $(THEOS_MAKE_PATH)/tweak.mk
 
 # ElleKit reads the injection filter as the target process's user, so the plist

@@ -7,7 +7,7 @@
 #import "ASTCStoreClient.h"
 #import "ASTCStoreServices.h"
 #import "ASTCInstaller.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 #import "ASTCLocalization.h"
 
 #import <objc/message.h>
@@ -56,7 +56,7 @@
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    ASTCLog(@"version chooser visible: %lu rows, title=%@", (unsigned long)self.versions.count, self.title);
+    XLog(@"UI", @"version chooser visible: %lu rows, title=%@", (unsigned long)self.versions.count, self.title);
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -122,7 +122,7 @@
     }
     // Keep resolved builds: a refused lookup must not empty the list. Only the
     // builds given up on get another chance.
-    ASTCLog(@"version chooser refresh: retrying skipped builds for %@", self.adamId);
+    XLog(@"UI", @"version chooser refresh: retrying skipped builds for %@", self.adamId);
     [[ASTCStoreClient sharedInstance] clearSkippedBuildsForAdamID:self.adamId];
     [self startLoadingForceRefresh:YES];
 }
@@ -140,7 +140,7 @@
     [self.tableView reloadData];
 
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
-    ASTCLog(@"version chooser loading %@ (forceRefresh=%d)", self.adamId, forceRefresh);
+    XLog(@"UI", @"version chooser loading %@ (forceRefresh=%d)", self.adamId, forceRefresh);
     __weak typeof(self) weakSelf = self;
     [[ASTCStoreClient sharedInstance] fetchProductForAdamID:self.adamId
                                                  progress:^(NSUInteger resolved, NSUInteger total, ASTCProduct *product,
@@ -159,7 +159,7 @@
                 ? [NSString stringWithFormat:@"Checking versions… %lu/%lu", (unsigned long)resolved, (unsigned long)total]
                 : @"Updating the version list…";
             if (firstRows) {
-                ASTCLog(@"version chooser showed %lu cached versions after %.2fs",
+                XLog(@"UI", @"version chooser showed %lu cached versions after %.2fs",
                        (unsigned long)versions.count, CFAbsoluteTimeGetCurrent() - startTime);
                 if (product.name.length) {
                     strongSelf.title = product.name;
@@ -176,7 +176,7 @@
             return;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
-            ASTCLog(@"version chooser load took %.2fs: %lu versions, error=%@",
+            XLog(@"UI", @"version chooser load took %.2fs: %lu versions, error=%@",
                    CFAbsoluteTimeGetCurrent() - startTime,
                    (unsigned long)product.versions.count, error.localizedDescription);
             strongSelf.loading = NO;
@@ -216,7 +216,7 @@
             [strongSelf updateHeader];
             [strongSelf updateFooter];
             [strongSelf.tableView reloadData];
-            ASTCLog(@"version chooser loaded %lu versions for %@ (installed %@)",
+            XLog(@"UI", @"version chooser loaded %lu versions for %@ (installed %@)",
                    (unsigned long)product.versions.count, product.name,
                    product.installedDisplayVersion ?: @"unknown");
         });

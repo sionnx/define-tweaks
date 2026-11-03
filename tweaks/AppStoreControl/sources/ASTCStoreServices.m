@@ -4,7 +4,7 @@
 //
 
 #import "ASTCStoreServices.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 #import "ASTCPackageInfoReader.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
@@ -85,14 +85,14 @@ static NSString *ASTCBuildBuyParameters(NSString *adamId,
     _finished = YES;
     void (^handler)(NSDictionary *, NSError *) = _responseHandler;
     _responseHandler = nil;
-    ASTCLog(@"observer: finishing (plist=%@ error=%@ handler=%@)", plist ? @"yes" : @"nil", error, handler ? @"present" : @"nil");
+    XLog(@"Services", @"observer: finishing (plist=%@ error=%@ handler=%@)", plist ? @"yes" : @"nil", error, handler ? @"present" : @"nil");
     if (handler) {
         @try {
             handler(plist, error);
         } @catch (NSException *exception) {
-            ASTCLog(@"observer: response handler threw %@", exception);
+            XLog(@"Services", @"observer: response handler threw %@", exception);
         }
-        ASTCLog(@"observer: response handler returned");
+        XLog(@"Services", @"observer: response handler returned");
     }
 }
 
@@ -142,13 +142,13 @@ static NSString *ASTCBuildBuyParameters(NSString *adamId,
 
 - (void)purchaseRequest:(id)request purchaseDidSucceedWithResponse:(id)response
 {
-    ASTCLog(@"purchase request succeeded (request=%@)", NSStringFromClass([request class]));
+    XLog(@"Services", @"purchase request succeeded (request=%@)", NSStringFromClass([request class]));
     [self handleResponse:response];
 }
 
 - (void)purchaseRequest:(id)request purchaseDidFail:(id)purchase withError:(NSError *)error
 {
-    ASTCLog(@"purchase request failed: %@", error);
+    XLog(@"Services", @"purchase request failed: %@", error);
     [self finishWithPlist:nil error:error ?: ASTCError(3, @"The store rejected the request.")];
 }
 
@@ -156,7 +156,7 @@ static NSString *ASTCBuildBuyParameters(NSString *adamId,
 
 - (void)request:(id)request didFailWithError:(NSError *)error
 {
-    ASTCLog(@"request failed: %@", error);
+    XLog(@"Services", @"request failed: %@", error);
     [self finishWithPlist:nil error:error ?: ASTCError(4, @"The store request failed.")];
 }
 
@@ -352,7 +352,7 @@ static NSString *ASTCStoreKeychainToken(id account, NSNumber *dsid)
     CFTypeRef result = NULL;
     OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
     if (status != errSecSuccess || !result) {
-        ASTCLog(@"store identity: keychain token status=%d", (int)status);
+        XLog(@"Services", @"store identity: keychain token status=%d", (int)status);
         return nil;
     }
     id items = (__bridge_transfer id)result;
@@ -398,7 +398,7 @@ static NSString *ASTCStoreKeychainToken(id account, NSNumber *dsid)
         ? [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]
               stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
         : nil;
-    ASTCLog(@"store identity: keychain token items=%lu weight=%ld length=%lu",
+    XLog(@"Services", @"store identity: keychain token items=%lu weight=%ld length=%lu",
            (unsigned long)[items count], (long)bestWeight, (unsigned long)token.length);
     return token.length ? token : nil;
 }
@@ -435,12 +435,12 @@ static NSString *ASTCStoreCookieHeader(id account, NSURL *url)
                 NSError *error = nil;
                 ((id (*)(id, SEL, double, NSError **))objc_msgSend)(promise, result, 15.0, &error);
                 if (error) {
-                    ASTCLog(@"store identity: AMS cookies failed: %@", error.localizedDescription);
+                    XLog(@"Services", @"store identity: AMS cookies failed: %@", error.localizedDescription);
                 }
             }
             cookie = [request valueForHTTPHeaderField:@"Cookie"];
         } @catch (NSException *exception) {
-            ASTCLog(@"store identity: AMS cookies threw %@", exception.reason);
+            XLog(@"Services", @"store identity: AMS cookies threw %@", exception.reason);
         }
     }
     NSString *source = @"AMS";
@@ -461,10 +461,10 @@ static NSString *ASTCStoreCookieHeader(id account, NSURL *url)
                 cookie = [fields isKindOfClass:[NSDictionary class]] ? fields[@"Cookie"] : nil;
             }
         } @catch (NSException *exception) {
-            ASTCLog(@"store identity: cookie storage threw %@", exception.reason);
+            XLog(@"Services", @"store identity: cookie storage threw %@", exception.reason);
         }
     }
-    ASTCLog(@"store identity: cookie source=%@ length=%lu mediaToken=%d",
+    XLog(@"Services", @"store identity: cookie source=%@ length=%lu mediaToken=%d",
            source, (unsigned long)cookie.length, [cookie rangeOfString:@"mz_at0"].location != NSNotFound);
     return cookie.length ? cookie : nil;
 }
@@ -521,7 +521,7 @@ static NSError *ASTCStoreFailure(NSDictionary *plist, NSInteger status, NSError 
     if ([failureType isEqualToString:@"2071"] || [failureType isEqualToString:@"2077"]
         || [message containsString:@"BadPasswordToken"]
         || (dialogKind && [dialogKind caseInsensitiveCompare:@"authorization"] == NSOrderedSame)) {
-        ASTCLog(@"store lookup stopped: authorization required (failureType=%@ dialog=%@)", failureType, dialogKind);
+        XLog(@"Services", @"store lookup stopped: authorization required (failureType=%@ dialog=%@)", failureType, dialogKind);
         return ASTCError(ASTCStoreLookupStoppedErrorCode, @"Apple ID authorization is required. Version lookup stopped.");
     }
     if (message.length) {
@@ -564,7 +564,7 @@ static void ASTCLogStoreDialog(NSDictionary *plist)
     for (NSString *pair in [buyParameters componentsSeparatedByString:@"&"]) {
         [fields addObject:[pair componentsSeparatedByString:@"="].firstObject];
     }
-    ASTCLog(@"store dialog: failureType=%@ customerMessage=%@ kind=%@ message=%@ explanation=%@ okKind=%@ fields=%@ price=%@ pricing=%@",
+    XLog(@"Services", @"store dialog: failureType=%@ customerMessage=%@ kind=%@ message=%@ explanation=%@ okKind=%@ fields=%@ price=%@ pricing=%@",
            ASTCRedactedText(ASTCFindResponseValue(plist, @"failureType")),
            ASTCRedactedText(ASTCFindResponseValue(plist, @"customerMessage")),
            ASTCRedactedText(dictionary[@"kind"]),
@@ -598,7 +598,7 @@ static NSString *ASTCFollowableBuyParameters(NSDictionary *plist, NSString *adam
         reason = @"different app";
     }
     if (reason) {
-        ASTCLog(@"store fallback refused: %@", reason);
+        XLog(@"Services", @"store fallback refused: %@", reason);
         return nil;
     }
     return buyParameters;
@@ -779,7 +779,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
     @try { [purchase setValue:@YES forKey:@"skipSoftwareAccountPreflight"]; } @catch (__unused NSException *e) {}
     @try { [purchase setValue:@(createsDownloads) forKey:@"displaysOnLockScreen"]; } @catch (__unused NSException *e) {}
 
-    ASTCLog(@"purchase flags read-back: downloads=%@ jobs=%@ installJobs=%@ ownerDSID=%@ localRedownload=%@",
+    XLog(@"Services", @"purchase flags read-back: downloads=%@ jobs=%@ installJobs=%@ ownerDSID=%@ localRedownload=%@",
            [purchase valueForKey:@"createsDownloads"],
            [purchase valueForKey:@"createsJobs"],
            [purchase valueForKey:@"createsInstallJobs"],
@@ -817,7 +817,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
     // holds a weak delegate reference.
     objc_setAssociatedObject(request, "to.define.appstorecontrol.observer", observer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    ASTCLog(@"starting store request buyParams=%@ creates=%d account=%@", buyParameters, createsDownloads, accountIdentifier);
+    XLog(@"Services", @"starting store request buyParams=%@ creates=%d account=%@", buyParameters, createsDownloads, accountIdentifier);
 
     dispatch_async(_workQueue, ^{
         ((void (*)(id, SEL))objc_msgSend)(request, NSSelectorFromString(@"start"));
@@ -883,7 +883,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
             @synchronized(self) {
                 self->_storeIdentity = identity;
             }
-            ASTCLog(@"store identity ready: host=%@ token=%d cookie=%d storefront=%d mediaToken=%d session=%d",
+            XLog(@"Services", @"store identity ready: host=%@ token=%d cookie=%d storefront=%d mediaToken=%d session=%d",
                    identity.host, token.length > 0, cookieHeader.length > 0, storefront.length > 0,
                    identity.hasMediaToken, sessionAccount != nil);
             completion(identity, nil);
@@ -896,7 +896,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
             ? ((id (*)(id, SEL, id))objc_msgSend)([requestClass alloc], NSSelectorFromString(@"initWithAuthenticationContext:"), context)
             : nil;
         if (![request respondsToSelector:start]) {
-            ASTCLog(@"store identity: authentication preflight unavailable");
+            XLog(@"Services", @"store identity: authentication preflight unavailable");
             finish(nil);
             return;
         }
@@ -912,7 +912,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
                     break;
                 }
             }
-            ASTCLog(@"store identity: preflight error=%@ session=%d",
+            XLog(@"Services", @"store identity: preflight error=%@ session=%d",
                    ASTCSafeValue(authenticateResponse, @"error") ?: @"-", sessionAccount != nil);
             finish(sessionAccount);
         };
@@ -923,7 +923,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
         @try {
             ((void (*)(id, SEL, id))objc_msgSend)(request, start, response);
         } @catch (NSException *exception) {
-            ASTCLog(@"store identity: preflight threw %@", exception.reason);
+            XLog(@"Services", @"store identity: preflight threw %@", exception.reason);
             finish(nil);
         }
     });
@@ -1023,7 +1023,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
         finish(nil, 0, ASTCError(5, @"The App Store did not respond."));
     });
 
-    ASTCLog(@"store request: POST %@ %@ bytes=%lu mescal=%d", identity.host, path, (unsigned long)body.length, mescalSign);
+    XLog(@"Services", @"store request: POST %@ %@ bytes=%lu mescal=%d", identity.host, path, (unsigned long)body.length, mescalSign);
     void (^handler)(id, NSError *) = ^(id response, NSError *error) {
         NSInteger status = [ASTCSafeValue(response, @"statusCode") integerValue];
         NSData *bodyData = ASTCSafeValue(response, @"bodyData");
@@ -1031,7 +1031,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
             ? [NSPropertyListSerialization propertyListWithData:bodyData options:0 format:NULL error:NULL]
             : nil;
         NSDictionary *dictionary = [plist isKindOfClass:[NSDictionary class]] ? plist : nil;
-        ASTCLog(@"store response: HTTP %ld bytes=%lu error=%@ %@", (long)status,
+        XLog(@"Services", @"store response: HTTP %ld bytes=%lu error=%@ %@", (long)status,
                (unsigned long)([bodyData isKindOfClass:[NSData class]] ? bodyData.length : 0),
                error.localizedDescription ?: @"-", ASTCSummarizeCommerceResponse(dictionary, error));
         finish(dictionary, status, error);
@@ -1060,7 +1060,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
                                 completion:^(NSDictionary *plist, NSInteger status, NSError *error) {
             ASTCIdentifierList *list = status >= 200 && status < 300 ? ASTCIdentifierListFromPlist(plist) : nil;
             if (list) {
-                ASTCLog(@"identifier list for %@: %lu identifiers, latest=%@", adamId,
+                XLog(@"Services", @"identifier list for %@: %lu identifiers, latest=%@", adamId,
                        (unsigned long)list.identifiers.count, list.latestExternalVersionId);
                 @synchronized(self) {
                     [self->_buyContinuations removeObjectForKey:adamId];
@@ -1075,7 +1075,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
                 completion(nil, failure);
                 return;
             }
-            ASTCLog(@"store fallback: following the Buy action once for %@", adamId);
+            XLog(@"Services", @"store fallback: following the Buy action once for %@", adamId);
             [self nativeCompatibilityBuyForAdamID:adamId
                                 externalVersionId:ASTCBuyParamValue(continuation, @"appExtVrsId")
                                     buyParameters:continuation
@@ -1090,7 +1090,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
                     completion(nil, ASTCStoreFailure(nativePlist, 200, nativeError));
                     return;
                 }
-                ASTCLog(@"store fallback: identifier list for %@: %lu identifiers", adamId, (unsigned long)nativeList.identifiers.count);
+                XLog(@"Services", @"store fallback: identifier list for %@: %lu identifiers", adamId, (unsigned long)nativeList.identifiers.count);
                 @synchronized(self) {
                     self->_buyContinuations[adamId] = continuation;
                     self->_nativeBuildRequestCounts[adamId] = @0;
@@ -1132,7 +1132,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
     }
     if (continuation) {
         if (!allowed) {
-            ASTCLog(@"store fallback: native build request limit reached for %@", adamId);
+            XLog(@"Services", @"store fallback: native build request limit reached for %@", adamId);
             completion(nil, ASTCError(ASTCStoreLookupStoppedErrorCode, @"Version lookup stopped at the native request limit."));
             return;
         }
@@ -1234,7 +1234,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
         version.bundleVersion = bundleVersion;
         version.buyParams = buyParameters;
         version.packageURL = packageURL;
-        ASTCLog(@"resolved ext=%@ -> %@ (minOS=%@ build=%@ packageURL=%@)", externalID, displayVersion,
+        XLog(@"Services", @"resolved ext=%@ -> %@ (minOS=%@ build=%@ packageURL=%@)", externalID, displayVersion,
                minimumOS ?: @"-", bundleVersion ?: @"-", packageURL ? @"yes" : @"no");
         if (completion) {
             completion(version, nil);
@@ -1250,7 +1250,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
         }
         [self fetchBuildPlistForAdamID:adamId externalID:externalID identity:identity completion:^(NSDictionary *song, NSError *error) {
             if (!song) {
-                ASTCLog(@"resolve failed for ext=%@: %@", externalID, error.localizedDescription);
+                XLog(@"Services", @"resolve failed for ext=%@: %@", externalID, error.localizedDescription);
                 if (completion) {
                     completion(nil, error);
                 }
@@ -1260,7 +1260,7 @@ static ASTCIdentifierList *ASTCIdentifierListFromPlist(NSDictionary *plist)
                 ?: ASTCStringFromValue(ASTCFindResponseValue(song, @"versionExternalIdentifier"))
                 ?: ASTCStringFromValue(ASTCFindResponseValue(song, @"externalVersionId"));
             if (returnedIdentifier && ![returnedIdentifier isEqualToString:externalID]) {
-                ASTCLog(@"resolve ext=%@: Apple substituted %@", externalID, returnedIdentifier);
+                XLog(@"Services", @"resolve ext=%@: Apple substituted %@", externalID, returnedIdentifier);
                 if (completion) {
                     completion(nil, ASTCError(16, @"Apple substituted a different build."));
                 }
@@ -1379,7 +1379,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
     // thread, so hop to main first (a background start triggers a main-thread assertion
     // that terminates the process with no crash log).
     if (![NSThread isMainThread]) {
-        ASTCLog(@"nativeBuy: hopping to main thread");
+        XLog(@"Services", @"nativeBuy: hopping to main thread");
         dispatch_async(dispatch_get_main_queue(), ^{
             [self nativeCompatibilityBuyForAdamID:adamId
                                 externalVersionId:externalVersionId
@@ -1388,12 +1388,12 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         });
         return;
     }
-    ASTCLog(@"nativeBuy: ENTER (main) adam=%@ ext=%@ bytesIn=%lu", adamId, externalVersionId ?: @"-", (unsigned long)buyParameters.length);
+    XLog(@"Services", @"nativeBuy: ENTER (main) adam=%@ ext=%@ bytesIn=%lu", adamId, externalVersionId ?: @"-", (unsigned long)buyParameters.length);
 
     Class purchaseClass = NSClassFromString(@"SSPurchase");
     Class requestClass = NSClassFromString(@"SSPurchaseRequest");
     if (!purchaseClass || !requestClass) {
-        ASTCLog(@"nativeBuy: SSPurchase/SSPurchaseRequest unavailable");
+        XLog(@"Services", @"nativeBuy: SSPurchase/SSPurchaseRequest unavailable");
         if (completion) completion(nil, ASTCError(18, @"The purchase request could not be started."));
         return;
     }
@@ -1407,7 +1407,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         externalVersionId.length ? [@"&appExtVrsId=" stringByAppendingString:externalVersionId] : @""];
     NSString *priceValue = ASTCBuyParamValue(bp, @"price");
     if (priceValue && [priceValue doubleValue] != 0.0) {
-        ASTCLog(@"nativeBuy: >>> ABORT — buyParams price=%@ is not zero; refusing to run a priced Buy", priceValue);
+        XLog(@"Services", @"nativeBuy: >>> ABORT — buyParams price=%@ is not zero; refusing to run a priced Buy", priceValue);
         if (completion) completion(nil, ASTCError(18, @"The purchase request could not be started."));
         return;
     }
@@ -1429,11 +1429,11 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
             }
         }
         if (!purchase) {
-            ASTCLog(@"nativeBuy: could not create SSPurchase");
+            XLog(@"Services", @"nativeBuy: could not create SSPurchase");
             if (completion) completion(nil, ASTCError(18, @"The purchase request could not be started."));
             return;
         }
-        ASTCLog(@"nativeBuy: SSPurchase created (%@)", NSStringFromClass([purchase class]));
+        XLog(@"Services", @"nativeBuy: SSPurchase created (%@)", NSStringFromClass([purchase class]));
 
         // These setters take NSNumber objects (2.3.15 wraps via numberWithLongLong:
         // before calling them); passing a raw long long crashes when the setter
@@ -1449,11 +1449,11 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
             sOO(purchase, NSSelectorFromString(@"setValue:forDownloadProperty:"), @YES, @"SSDownloadPropertyIsRedownload");
         for (NSString *s in @[@"setCreatesDownloads:", @"setCreatesJobs:", @"setCreatesInstallJobs:"])
             if ([purchase respondsToSelector:NSSelectorFromString(s)]) sB(purchase, NSSelectorFromString(s), NO);
-        ASTCLog(@"nativeBuy: SSPurchase configured (redownload, no jobs)");
+        XLog(@"Services", @"nativeBuy: SSPurchase configured (redownload, no jobs)");
 
         request = ((id (*)(id, SEL, id))objc_msgSend)([requestClass alloc], NSSelectorFromString(@"initWithPurchases:"), @[purchase]);
         if (!request) {
-            ASTCLog(@"nativeBuy: could not create SSPurchaseRequest");
+            XLog(@"Services", @"nativeBuy: could not create SSPurchaseRequest");
             if (completion) completion(nil, ASTCError(18, @"The purchase request could not be started."));
             return;
         }
@@ -1469,13 +1469,13 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         if ([request respondsToSelector:NSSelectorFromString(@"setShouldValidatePurchases:")]) sB(request, NSSelectorFromString(@"setShouldValidatePurchases:"), NO);
         if ([request respondsToSelector:NSSelectorFromString(@"setNeedsAuthentication:")]) sB(request, NSSelectorFromString(@"setNeedsAuthentication:"), YES);
     } @catch (NSException *exception) {
-        ASTCLog(@"nativeBuy: >>> setup threw %@ (%@)", exception.name, exception.reason);
+        XLog(@"Services", @"nativeBuy: >>> setup threw %@ (%@)", exception.name, exception.reason);
         if (completion) completion(nil, ASTCError(18, @"The purchase request could not be started."));
         return;
     }
 
     UIApplicationState appState = [UIApplication sharedApplication].applicationState;
-    ASTCLog(@"nativeBuy: starting StoreKitUI-compatible Buy (validation=NO createsDownloads=NO needsAuth=YES) adam=%@ ext=%@ bytes=%lu appState=%ld",
+    XLog(@"Services", @"nativeBuy: starting StoreKitUI-compatible Buy (validation=NO createsDownloads=NO needsAuth=YES) adam=%@ ext=%@ bytes=%lu appState=%ld",
            adamId, externalVersionId ?: @"-", (unsigned long)bp.length, (long)appState);
 
     // Keep the request alive for the whole async operation: ARC would otherwise
@@ -1501,7 +1501,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
     // second declared parameter would be read from an unset register and
     // retained on entry, which crashes before the first line runs.
     void (^responseBlk)(id) = ^(id response) {
-        ASTCLog(@"nativeBuy: responseBlk fired");
+        XLog(@"Services", @"nativeBuy: responseBlk fired");
         @try {
             NSInteger status = 0;
             NSData *body = nil;
@@ -1515,7 +1515,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
             if (![body isKindOfClass:[NSData class]]) {
                 @try { body = [response valueForKey:@"bodyData"]; } @catch (__unused NSException *e) {}
             }
-            ASTCLog(@"nativeBuy: response took %.2fs HTTP %ld bytes=%lu error=%@",
+            XLog(@"Services", @"nativeBuy: response took %.2fs HTTP %ld bytes=%lu error=%@",
                    CFAbsoluteTimeGetCurrent() - start, (long)status,
                    (unsigned long)([body isKindOfClass:[NSData class]] ? body.length : 0), err ?: @"-");
 
@@ -1530,7 +1530,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
                 NSString *actBuyParams = [okAct isKindOfClass:[NSDictionary class]] ? ((NSDictionary *)okAct)[@"buyParams"] : nil;
                 NSString *actPrice = ASTCBuyParamValue(actBuyParams, @"price");
                 if (actPrice && [actPrice doubleValue] != 0.0) {
-                    ASTCLog(@"nativeBuy: >>> ABORT — response dialog carries a priced continuation (price=%@); not a redownload", actPrice);
+                    XLog(@"Services", @"nativeBuy: >>> ABORT — response dialog carries a priced continuation (price=%@); not a redownload", actPrice);
                     resultError = ASTCError(18, @"The store answered with a priced purchase.");
                     finishOnce();
                     return;
@@ -1540,7 +1540,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
             resultError = [err isKindOfClass:[NSError class]] ? err : nil;
             finishOnce();
         } @catch (NSException *exception) {
-            ASTCLog(@"nativeBuy: >>> responseBlk threw %@ (%@)", exception.name, exception.reason);
+            XLog(@"Services", @"nativeBuy: >>> responseBlk threw %@ (%@)", exception.name, exception.reason);
             resultError = ASTCError(18, @"The purchase response could not be read.");
             finishOnce();
         }
@@ -1550,19 +1550,19 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         // is driven from the response block, so this is a no-op safety net.
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
                        dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-            if (!finished) { ASTCLog(@"nativeBuy: completion fired with no response body; rejecting"); resultError = ASTCError(18, @"The purchase returned no response."); finishOnce(); }
+            if (!finished) { XLog(@"Services", @"nativeBuy: completion fired with no response body; rejecting"); resultError = ASTCError(18, @"The purchase returned no response."); finishOnce(); }
         });
     };
 
     BOOL hasStart = [request respondsToSelector:NSSelectorFromString(@"startWithPurchaseResponseBlock:completionBlock:")];
-    ASTCLog(@"nativeBuy: request=%@ respondsToStart=%d", NSStringFromClass([request class]), hasStart);
+    XLog(@"Services", @"nativeBuy: request=%@ respondsToStart=%d", NSStringFromClass([request class]), hasStart);
     @try {
         ((void (*)(id, SEL, id, id))objc_msgSend)(request,
                                                   NSSelectorFromString(@"startWithPurchaseResponseBlock:completionBlock:"),
                                                   responseBlk, completionBlk);
-        ASTCLog(@"nativeBuy: start returned, process alive, awaiting auth/response");
+        XLog(@"Services", @"nativeBuy: start returned, process alive, awaiting auth/response");
     } @catch (NSException *exception) {
-        ASTCLog(@"nativeBuy: start threw %@", exception.reason);
+        XLog(@"Services", @"nativeBuy: start threw %@", exception.reason);
         resultError = ASTCError(18, @"The purchase request could not be started.");
         finishOnce();
     }
@@ -1570,7 +1570,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
     // Hard timeout so the UI never spins forever if the dialog is dismissed.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(90.0 * NSEC_PER_SEC)),
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        if (!finished) { ASTCLog(@"nativeBuy: timed out after 90s"); resultError = ASTCError(5, @"The store did not respond to the authorization."); finishOnce(); }
+        if (!finished) { XLog(@"Services", @"nativeBuy: timed out after 90s"); resultError = ASTCError(5, @"The store did not respond to the authorization."); finishOnce(); }
     });
 }
 
@@ -1629,7 +1629,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
 
     SEL selector = NSSelectorFromString(@"executeQuery:withResultHandler:");
     if (![history respondsToSelector:selector]) {
-        ASTCLog(@"ASDPurchaseHistory has no executeQuery:withResultHandler:");
+        XLog(@"Services", @"ASDPurchaseHistory has no executeQuery:withResultHandler:");
         completion(nil);
         return;
     }
@@ -1653,7 +1653,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
             } @catch (__unused NSException *exception) {
             }
         }
-        ASTCLog(@"local redownload params for %@: %@", bundleId, parameters);
+        XLog(@"Services", @"local redownload params for %@: %@", bundleId, parameters);
         completion(parameters);
     };
     ((void (*)(id, SEL, id, id))objc_msgSend)(history, selector, query, handler);
@@ -1662,7 +1662,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         if (!finished) {
             finished = YES;
-            ASTCLog(@"purchase history query timed out");
+            XLog(@"Services", @"purchase history query timed out");
             completion(nil);
         }
     });
@@ -1684,7 +1684,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         }
         NSString *buyParameters = [self buyParameters:parameters
                               replacingExternalVersionID:version.externalVersionId];
-        ASTCLog(@"local redownload install: %@", buyParameters);
+        XLog(@"Services", @"local redownload install: %@", buyParameters);
         [self runRequestWithBuyParameters:buyParameters
                         createsDownloads:YES
                        forceLocalRedownload:YES
@@ -1730,16 +1730,16 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
         return NO;
     }
 
-    ASTCLog(@"ASDPurchase install: buyParams=%@", buyParameters);
+    XLog(@"Services", @"ASDPurchase install: buyParams=%@", buyParameters);
     void (^handler)(id) = ^(id result) {
-        ASTCLog(@"ASDPurchase result: %@", result);
+        XLog(@"Services", @"ASDPurchase result: %@", result);
         if (completion) {
             completion(nil);
         }
     };
     SEL selector = NSSelectorFromString(@"startPurchase:withResultHandler:");
     if (![manager respondsToSelector:selector]) {
-        ASTCLog(@"ASDPurchaseManager has no startPurchase:withResultHandler:");
+        XLog(@"Services", @"ASDPurchaseManager has no startPurchase:withResultHandler:");
         return NO;
     }
     ((void (*)(id, SEL, id, id))objc_msgSend)(manager, selector, purchase, handler);
@@ -1751,7 +1751,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
     pricingParameters:(NSString *)pricingParameters
            completion:(ASTCInstallHandler)completion
 {
-    ASTCLog(@"installing %@ (ext=%@) for %@", version.displayVersion, version.externalVersionId, adamId);
+    XLog(@"Services", @"installing %@ (ext=%@) for %@", version.displayVersion, version.externalVersionId, adamId);
 
     // Preferred path: talk to appstored directly. Its purchase handling uses the
     // App Store's modern account session and honours appExtVrsId in the buy
@@ -1770,7 +1770,7 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
     [self runRequestWithBuyParameters:buyParameters
                      createsDownloads:YES
                             completion:^(NSDictionary *plist, NSError *error) {
-        ASTCLog(@"install response: %@", ASTCSummarizeCommerceResponse(plist, error));
+        XLog(@"Services", @"install response: %@", ASTCSummarizeCommerceResponse(plist, error));
         if (completion) {
             completion(error);
         }

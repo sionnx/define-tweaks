@@ -342,13 +342,13 @@ static void DRSetupDock(SBDockView *dockView) {
 	if (!dumped) {
 		dumped = YES;
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-			DRLog(@"scrollView frame=%@ contentSize=%@ offset=%@", NSStringFromCGRect(scrollView.frame),
+			XLog(@"Layout", @"scrollView frame=%@ contentSize=%@ offset=%@", NSStringFromCGRect(scrollView.frame),
 				NSStringFromCGSize(scrollView.contentSize), NSStringFromCGPoint(scrollView.contentOffset));
 			UIView *platter = DRPlatterView(dockView);
-			DRLog(@"platter %@ frame=%@ inDock=%d hostsList=%d radius=%.2f", NSStringFromClass([platter class]),
+			XLog(@"Layout", @"platter %@ frame=%@ inDock=%d hostsList=%d radius=%.2f", NSStringFromClass([platter class]),
 				NSStringFromCGRect(platter.frame), platter.superview == dockView, platter == clipView.superview,
 				platter.layer.cornerRadius);
-			DRLog(@"clipView frame=%@ radius=%.2f", NSStringFromCGRect(clipView.frame), clipView.layer.cornerRadius);
+			XLog(@"Layout", @"clipView frame=%@ radius=%.2f", NSStringFromCGRect(clipView.frame), clipView.layer.cornerRadius);
 			DRDumpListView(listView, @"after setup (+3s)");
 		});
 	}
@@ -475,9 +475,7 @@ static void DRSetupDock(SBDockView *dockView) {
 - (void)dropInteraction:(UIDropInteraction *)interaction sessionDidEnd:(id<UIDropSession>)session {
 	%orig;
 	DRDockScrollView *scrollView = DRScrollViewForList(self.iconListView);
-#if DR_DEBUG
-	if (scrollView) DRLog(@"drop session ended");
-#endif
+	if (scrollView) XLog(@"Drop", @"drop session ended");
 	[scrollView dr_dragEnded];
 }
 
@@ -489,10 +487,10 @@ static void DRSetupDock(SBDockView *dockView) {
 - (id)iconListView:(SBIconListView *)listView iconDropSessionDidUpdate:(id)session {
 	id result = %orig;
 	DRDockScrollView *scrollView = DRScrollViewForList(listView);
-#if DR_DEBUG
+#if XLOG_ENABLED
 	static NSUInteger calls = 0;
 	if (calls++ % 20 == 0) {
-		DRLog(@"dropUpdate #%lu list=%@ dock=%d session=%@ loc=%@", (unsigned long)calls, NSStringFromClass([listView class]),
+		XLog(@"Drop", @"dropUpdate #%lu list=%@ dock=%d session=%@ loc=%@", (unsigned long)calls, NSStringFromClass([listView class]),
 			scrollView != nil, NSStringFromClass([session class]),
 			[session respondsToSelector:@selector(locationInView:)] && scrollView
 				? NSStringFromCGPoint([session locationInView:scrollView.superview]) : @"-");

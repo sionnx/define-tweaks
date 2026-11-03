@@ -6,7 +6,6 @@
 #import "ASTCAppPickerViewController.h"
 #import "ASTCStoreClient.h"
 #import "ASTCVersionListViewController.h"
-#import "ASTCLog.h"
 
 @interface ASTCAppPickerViewController () <UISearchResultsUpdating>
 @property (nonatomic, strong) NSArray<ASTCInstalledApp *> *allApps;

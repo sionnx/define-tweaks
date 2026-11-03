@@ -17,6 +17,8 @@ DockReel_FILES = $(wildcard sources/*.x sources/*.m)
 DockReel_CFLAGS = -fobjc-arc
 DockReel_FRAMEWORKS = UIKit QuartzCore
 
+include ../../shared/XLog/XLog.mk
+
 include $(THEOS_MAKE_PATH)/tweak.mk
 
 SUBPROJECTS += prefs

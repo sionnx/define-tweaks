@@ -4,7 +4,7 @@
 //
 
 #import "ASTCPackageInfoReader.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 
 #import <zlib.h>
 
@@ -306,7 +306,7 @@ static NSData *ASTCInflate(NSData *compressed, uint64_t expectedLength)
 
 - (void)finish:(ASTCPackageRead *)read info:(NSDictionary *)info error:(NSError *)error
 {
-    ASTCLog(@"package Info.plist read took %.2fs: %lu requests, %llu bytes of %llu, minOS=%@ error=%@",
+    XLog(@"Package", @"package Info.plist read took %.2fs: %lu requests, %llu bytes of %llu, minOS=%@ error=%@",
            CFAbsoluteTimeGetCurrent() - read.startTime, (unsigned long)read.requestCount,
            read.bytesRead, read.totalLength, info[@"MinimumOSVersion"], error.localizedDescription);
     if (read.completion) {

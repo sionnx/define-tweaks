@@ -25,6 +25,7 @@ Or open [apt.define.to](https://apt.define.to) on your device and tap **Add to S
 
 ```
 tweaks/      Theos tweak projects, one directory per tweak
+shared/      Code compiled into every tweak
 depot/       apt.define.to: Cloudflare Worker + R2 + Durable Objects (Hono)
 scripts/     Publishing helper shared by CI and local use
 docs/        Guides, e.g. how to release a tweak

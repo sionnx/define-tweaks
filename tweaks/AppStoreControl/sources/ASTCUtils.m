@@ -8,7 +8,7 @@
 //
 
 #import "ASTCUtils.h"
-#import "ASTCLog.h"
+#import "XLog.h"
 #import "StoreServices.h"
 
 static const NSTimeInterval kASTCStorefrontDeadline = 5.0;
@@ -38,14 +38,14 @@ static void ASTCLoadDeviceCountryCode(void (^completion)(NSString *countryCode))
         if (device) {
             [device sdk_loadStorefrontCountryCode:^(NSString *countryCode, NSError *error) {
                 if (error) {
-                    ASTCLog(@"storefront: SSDevice failed: %@", error.localizedDescription);
+                    XLog(@"Utils", @"storefront: SSDevice failed: %@", error.localizedDescription);
                 }
                 completion(ASTCNormalizedCountryCode(countryCode));
             }];
             return;
         }
     } @catch (NSException *exception) {
-        ASTCLog(@"storefront: SSDevice raised %@", exception.reason);
+        XLog(@"Utils", @"storefront: SSDevice raised %@", exception.reason);
     }
     completion(nil);
 }
@@ -67,7 +67,7 @@ static void ASTCLoadDeviceCountryCode(void (^completion)(NSString *countryCode))
         NSString *systemCode = ASTCSystemCountryCode();
         NSString *countryCode = accountCode ?: systemCode ?: @"us";
         NSString *source = accountCode ? accountSource : (systemCode ? @"NSLocale" : @"default");
-        ASTCLog(@"storefront cc=%@ source=%@ locale=%@", countryCode, source, systemCode);
+        XLog(@"Utils", @"storefront cc=%@ source=%@ locale=%@", countryCode, source, systemCode);
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(countryCode);
         });

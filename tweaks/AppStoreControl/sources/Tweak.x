@@ -18,7 +18,7 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 
-#import "ASTCLog.h"
+#import "XLog.h"
 #import "ASTCModels.h"
 #import "ASTCStoreClient.h"
 #import "ASTCStoreServices.h"
@@ -81,7 +81,7 @@ static void ASTCTrackURL(NSURL *url)
     [defaults setObject:adamId forKey:ASTCRecentAdamIDKey];
     [defaults setObject:[NSDate date] forKey:ASTCRecentAdamIDDateKey];
     if (![previous isEqualToString:adamId]) {
-        ASTCLog(@"product page id: %@", adamId);
+        XLog(@"Hook", @"product page id: %@", adamId);
     }
 }
 
@@ -129,7 +129,7 @@ static void ASTCPresentController(UIViewController *controller)
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenter = ASTCTopViewController();
         if (!presenter || !controller) {
-            ASTCLog(@"cannot present: no view controller");
+            XLog(@"Hook", @"cannot present: no view controller");
             return;
         }
         [presenter presentViewController:controller animated:YES completion:nil];
@@ -154,16 +154,16 @@ static void ASTCPresentVersionChooser(NSString *adamId, NSString *bundleId, NSSt
         @try {
             UIViewController *presenter = ASTCTopViewController();
             if (!presenter) {
-                ASTCLog(@"cannot present version chooser: no presenter");
+                XLog(@"Hook", @"cannot present version chooser: no presenter");
                 return;
             }
             ASTCVersionListViewController *controller =
                 [[ASTCVersionListViewController alloc] initWithAdamID:adamId bundleId:bundleId name:name];
             UINavigationController *navigationController = [controller wrappedInNavigationController];
             [presenter presentViewController:navigationController animated:YES completion:nil];
-            ASTCLog(@"presented version chooser for %@", adamId);
+            XLog(@"Hook", @"presented version chooser for %@", adamId);
         } @catch (NSException *exception) {
-            ASTCLog(@"presenting version chooser failed: %@", exception);
+            XLog(@"Hook", @"presenting version chooser failed: %@", exception);
         }
     });
 }
@@ -189,7 +189,7 @@ static void ASTCPresentVersionChooser(NSString *adamId, NSString *bundleId, NSSt
     }
     UIView *view = recognizer.view ?: self.targetView;
     NSString *className = NSStringFromClass([view class]);
-    ASTCLog(@"long press on %@", className);
+    XLog(@"Hook", @"long press on %@", className);
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
     [feedback impactOccurred];
 
@@ -245,10 +245,10 @@ static void ASTCPresentVersionChooser(NSString *adamId, NSString *bundleId, NSSt
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"Clear Version Cache" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         [[ASTCStoreClient sharedInstance] clearCacheForAdamID:nil];
-        ASTCLog(@"version cache cleared");
+        XLog(@"Hook", @"version cache cleared");
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"Open Log" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        NSString *path = [NSString stringWithFormat:@"file://%@", [ASTCLogger logFilePath]];
+        NSString *path = [NSString stringWithFormat:@"file://%@", XLogFilePath()];
         [[UIApplication sharedApplication] openURL:[NSURL URLWithString:path] options:@{} completionHandler:nil];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
@@ -297,7 +297,7 @@ static void ASTCMaybeAttachLongPress(UIView *view)
     press.cancelsTouchesInView = YES;
     press.delegate = handler;
     [view addGestureRecognizer:press];
-    ASTCLog(@"attached long press to %@", NSStringFromClass([view class]));
+    XLog(@"Hook", @"attached long press to %@", NSStringFromClass([view class]));
 }
 
 
@@ -344,7 +344,7 @@ static void ASTCMaybeAttachLongPress(UIView *view)
 %ctor
 {
     @autoreleasepool {
-        ASTCLog(@"AppStoreControl loaded into %@ (store services %@)",
+        XLog(@"Hook", @"AppStoreControl loaded into %@ (store services %@)",
                [[NSBundle mainBundle] bundleIdentifier],
                [ASTCStoreServices isAvailable] ? @"available" : @"missing");
     }
