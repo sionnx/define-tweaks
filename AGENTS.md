@@ -1,11 +1,9 @@
 
 Target platform: iOS 17.3, jailbroken with [Dopamine RootHide 3](https://github.com/roothide/Dopamine-roothide).
 
-README.md is in English only.
+Write README.md and comments in English, and always answer my questions in Chinese.
 
-Write comments in English.
-
-Always answer my questions in Chinese.
+Write code according to the best long-term solution.
 
 When releasing a tweak, follow [docs/release-tweaks.md](docs/release-tweaks.md).
 
