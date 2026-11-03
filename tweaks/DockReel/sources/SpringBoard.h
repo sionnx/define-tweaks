@@ -1,5 +1,5 @@
 // Private SpringBoard / SpringBoardHome declarations used by DockReel,
-// verified against iOS 17.3 (21D50) headers in references/ipsws.
+// checked against the iOS 17.3 (21D50) and 27.0.1 (24A446) headers in references/ipsws.
 
 #import <UIKit/UIKit.h>
 
@@ -24,7 +24,9 @@ typedef struct SBIconCoordinate {
 @property (assign, nonatomic) NSUInteger numberOfPortraitColumns;
 @property (assign, nonatomic) UIEdgeInsets portraitLayoutInsets;
 @property (assign, nonatomic) SBIconImageInfo iconImageInfo;
+// Which of these two exists depends on the system; use DRSpacingListSize in DRCompat.h.
 @property (assign, nonatomic) CGSize listSizeForIconSpacingCalculation;
+@property (assign, nonatomic) CGSize portraitListSizeForIconSpacingCalculation;
 @end
 
 @interface SBIconListFlowLayout : NSObject
@@ -57,6 +59,11 @@ typedef struct SBIconCoordinate {
 
 @interface SBDockView : UIView
 @property (nonatomic, readonly) SBDockIconListView *dockListView;
+@end
+
+// The icon list's UIDropInteraction delegate.
+@interface SBIconListViewDraggingDestinationDelegate : NSObject
+@property (nonatomic, readonly, weak) SBIconListView *iconListView;
 @end
 
 // FrontBoard: used to restart SpringBoard after the switch is toggled

@@ -39,7 +39,7 @@ void DRDumpListView(UIView *listView, NSString *tag) {
 	}
 	id config = DRValue(DRValue(listView, @"layout"), @"layoutConfiguration");
 	for (NSString *key in @[ @"numberOfPortraitColumns", @"numberOfPortraitRows", @"portraitLayoutInsets",
-		@"listSizeForIconSpacingCalculation" ]) {
+		@"listSizeForIconSpacingCalculation", @"portraitListSizeForIconSpacingCalculation" ]) {
 		DRLog(@"  config.%@ = %@", key, DRValue(config, key));
 	}
 	id metrics = DRValue(listView, @"layoutMetrics");

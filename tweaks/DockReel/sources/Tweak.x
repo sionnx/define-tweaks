@@ -1,4 +1,4 @@
-// DockReel — scrollable dock with more than 4 icons, paged or free scrolling (iOS 17, SpringBoard).
+// DockReel — scrollable dock with more than 4 icons, paged or free scrolling (SpringBoard).
 // Hooks and dock setup; see DRDockScrollView.m for scrolling logic.
 //
 // How it works:
@@ -22,6 +22,7 @@
 #import <objc/runtime.h>
 #import "DockReel.h"
 #import "SpringBoard.h"
+#import "DRCompat.h"
 #import "DRDockScrollView.h"
 
 static NSString *const kDRDockLocation = @"SBIconLocationDock";
@@ -134,8 +135,8 @@ static SBIconListView *DRDockListView(SBDockView *dockView) {
 }
 
 // Make icon pitch exactly pageWidth / 4 so every page lines up identically.
-// SpringBoard derives the dock's iconSpacing from listSizeForIconSpacingCalculation
-// (the screen size) and the column count, so with 8 columns that width has to
+// SpringBoard derives the dock's iconSpacing from the spacing list size (see
+// DRSpacingListSize) and the column count, so with 8 columns that width has to
 // cover both pages, otherwise the spacing goes negative and icons overlap.
 static BOOL DRTuneSpacing(SBIconListView *listView, SBIconListGridLayoutConfiguration *config, CGFloat pageWidth) {
 	if (!config || pageWidth <= 0) return NO;
@@ -153,14 +154,12 @@ static BOOL DRTuneSpacing(SBIconListView *listView, SBIconListGridLayoutConfigur
 		changed = YES;
 	}
 
-	if ([config respondsToSelector:@selector(listSizeForIconSpacingCalculation)]) {
-		CGSize listSize = config.listSizeForIconSpacingCalculation;
-		CGFloat wanted = pageWidth * DR_MAX_PAGES;
-		if (fabs(listSize.width - wanted) >= 0.5) {
-			listSize.width = wanted;
-			config.listSizeForIconSpacingCalculation = listSize;
-			changed = YES;
-		}
+	CGSize listSize = DRSpacingListSize(config);
+	CGFloat wanted = pageWidth * DR_MAX_PAGES;
+	if (fabs(listSize.width - wanted) >= 0.5) {
+		listSize.width = wanted;
+		DRSetSpacingListSize(config, listSize);
+		changed = YES;
 	}
 
 	if ([listView respondsToSelector:@selector(iconSpacing)]) {
@@ -191,14 +190,12 @@ static BOOL DRTuneFreeSpacing(SBIconListView *listView, SBIconListGridLayoutConf
 		changed = YES;
 	}
 
-	if ([config respondsToSelector:@selector(listSizeForIconSpacingCalculation)]) {
-		CGSize listSize = config.listSizeForIconSpacingCalculation;
-		CGFloat wanted = DRListWidth(listView, pageWidth);
-		if (fabs(listSize.width - wanted) >= 0.01) {
-			listSize.width = wanted;
-			config.listSizeForIconSpacingCalculation = listSize;
-			changed = YES;
-		}
+	CGSize listSize = DRSpacingListSize(config);
+	CGFloat wanted = DRListWidth(listView, pageWidth);
+	if (fabs(listSize.width - wanted) >= 0.01) {
+		listSize.width = wanted;
+		DRSetSpacingListSize(config, listSize);
+		changed = YES;
 	}
 
 	if ([listView respondsToSelector:@selector(iconSpacing)]) {
@@ -236,8 +233,11 @@ static void DRLayoutClip(SBDockView *dockView, UIView *clipView, DRDockScrollVie
 	CGRect clipFrame = intended;
 	CGFloat radius = 0;
 	if (platter && platter.superview == dockView && CGRectGetWidth(platter.frame) > 100) {
-		clipFrame = platter.frame;
-		radius = DRCornerRadius(platter, 3);
+		// A glass dock's platter contains the list; on older systems it is a sibling
+		// whose frame shares our coordinates and whose radius may be on a subview.
+		BOOL hostsList = platter == clipView.superview;
+		clipFrame = hostsList ? platter.bounds : platter.frame;
+		radius = hostsList ? platter.layer.cornerRadius : DRCornerRadius(platter, 3);
 	}
 	if (!CGRectEqualToRect(clipView.frame, clipFrame)) clipView.frame = clipFrame;
 	if (fabs(clipView.layer.cornerRadius - radius) > 0.01) clipView.layer.cornerRadius = radius;
@@ -299,7 +299,7 @@ static void DRSetupDock(SBDockView *dockView) {
 		CGRect f = listView.frame;
 		BOOL isOurs = CGPointEqualToPoint(f.origin, CGPointZero) &&
 			fabs(CGRectGetWidth(f) - DRListWidth(listView, CGRectGetWidth(scrollView.dockFrame))) < 0.5;
-		// If SpringBoard assigned a fresh frame this pass, it is in dock coordinates.
+		// If SpringBoard assigned a fresh frame this pass, it is in the clip view's parent's coordinates.
 		intended = isOurs ? scrollView.dockFrame : f;
 	}
 
@@ -345,8 +345,9 @@ static void DRSetupDock(SBDockView *dockView) {
 			DRLog(@"scrollView frame=%@ contentSize=%@ offset=%@", NSStringFromCGRect(scrollView.frame),
 				NSStringFromCGSize(scrollView.contentSize), NSStringFromCGPoint(scrollView.contentOffset));
 			UIView *platter = DRPlatterView(dockView);
-			DRLog(@"platter %@ frame=%@ inDock=%d radius=%.2f", NSStringFromClass([platter class]),
-				NSStringFromCGRect(platter.frame), platter.superview == dockView, DRCornerRadius(platter, 3));
+			DRLog(@"platter %@ frame=%@ inDock=%d hostsList=%d radius=%.2f", NSStringFromClass([platter class]),
+				NSStringFromCGRect(platter.frame), platter.superview == dockView, platter == clipView.superview,
+				platter.layer.cornerRadius);
 			DRLog(@"clipView frame=%@ radius=%.2f", NSStringFromCGRect(clipView.frame), clipView.layer.cornerRadius);
 			DRDumpListView(listView, @"after setup (+3s)");
 		});
@@ -465,14 +466,19 @@ static void DRSetupDock(SBDockView *dockView) {
 	});
 }
 
+%end
+
 // UIKit sends this for every drop interaction a drag visited, including
 // cancelled drags that never exit or perform a drop.
+%hook SBIconListViewDraggingDestinationDelegate
+
 - (void)dropInteraction:(UIDropInteraction *)interaction sessionDidEnd:(id<UIDropSession>)session {
 	%orig;
+	DRDockScrollView *scrollView = DRScrollViewForList(self.iconListView);
 #if DR_DEBUG
-	DRLog(@"drop session ended");
+	if (scrollView) DRLog(@"drop session ended");
 #endif
-	[DRScrollViewForList(self) dr_dragEnded];
+	[scrollView dr_dragEnded];
 }
 
 %end
@@ -536,6 +542,8 @@ static void DRRespring(CFNotificationCenterRef center, void *observer, CFStringR
 	Boolean valid = false;
 	Boolean enabled = CFPreferencesGetAppBooleanValue(CFSTR("Enabled"), CFSTR("to.define.dockreel"), &valid);
 	if (valid && !enabled) return;
+	// Unsupported system: keep the stock dock
+	if (!DRCompatPrepare()) return;
 	// Scroll mode: 0 = paged (default), 1 = free scrolling
 	gFreeMode = CFPreferencesGetAppIntegerValue(CFSTR("ScrollMode"), CFSTR("to.define.dockreel"), NULL) == 1;
 	%init;
