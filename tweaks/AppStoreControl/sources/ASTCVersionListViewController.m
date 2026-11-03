@@ -8,6 +8,7 @@
 #import "ASTCStoreServices.h"
 #import "ASTCInstaller.h"
 #import "ASTCLog.h"
+#import "ASTCLocalization.h"
 
 #import <objc/message.h>
 
@@ -25,6 +26,9 @@
 @property (nonatomic, copy) NSString *statusMessage;
 @property (nonatomic, strong) UIActivityIndicatorView *spinner;
 @property (nonatomic, strong) UILabel *footerLabel;
+/// Build whose install request is running. Rows reload while probing, so the
+/// spinner is tracked by build instead of by cell.
+@property (nonatomic, copy) NSString *installingExternalVersionId;
 @end
 
 @implementation ASTCVersionListViewController
@@ -53,6 +57,15 @@
 {
     [super viewDidAppear:animated];
     ASTCLog(@"version chooser visible: %lu rows, title=%@", (unsigned long)self.versions.count, self.title);
+}
+
+- (void)viewDidDisappear:(BOOL)animated
+{
+    [super viewDidDisappear:animated];
+    // The list closes by being dismissed, or popped when opened from the picker.
+    if (self.isMovingFromParentViewController || self.navigationController.isBeingDismissed) {
+        [[ASTCStoreClient sharedInstance] cancelVersionLookupForAdamID:self.adamId];
+    }
 }
 
 - (void)viewDidLoad
@@ -244,7 +257,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    return self.product ? @"Available Versions" : @"Status";
+    return self.product ? ASTCLocalized(@"Available Versions") : @"Status";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -281,7 +294,7 @@
         [detail appendAttributedString:[[NSAttributedString alloc] initWithString:@"unknown" attributes:detailAttributes]];
     } else {
         NSString *compatibility = version.isCompatible
-            ? @"compatible"
+            ? ASTCLocalized(@"compatible")
             : [NSString stringWithFormat:@"requires iOS %@", version.minimumOSVersion];
         [detail appendAttributedString:[[NSAttributedString alloc]
             initWithString:compatibility
@@ -289,16 +302,21 @@
                              NSForegroundColorAttributeName : version.isCompatible ? self.view.tintColor : [UIColor systemRedColor]}]];
     }
     if (version.isInstalled) {
-        [detail appendAttributedString:[[NSAttributedString alloc] initWithString:@" - installed" attributes:detailAttributes]];
+        [detail appendAttributedString:[[NSAttributedString alloc] initWithString:[@" - " stringByAppendingString:ASTCLocalized(@"installed")] attributes:detailAttributes]];
     }
     cell.detailTextLabel.attributedText = detail;
+    if (self.installingExternalVersionId && [version.externalVersionId isEqualToString:self.installingExternalVersionId]) {
+        UIActivityIndicatorView *indicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        [indicator startAnimating];
+        cell.accessoryView = indicator;
+    }
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (self.versions.count == 0) {
+    if (self.versions.count == 0 || self.installingExternalVersionId) {
         return;
     }
     ASTCVersion *version = self.versions[indexPath.row];
@@ -331,6 +349,9 @@
 
 - (void)installVersion:(ASTCVersion *)version
 {
+    self.installingExternalVersionId = version.externalVersionId;
+    [self.tableView reloadData];
+
     __weak typeof(self) weakSelf = self;
     [[ASTCInstaller sharedInstance] installVersion:version
                                         ofProduct:self.product
@@ -341,6 +362,8 @@
                 return;
             }
             if (error) {
+                strongSelf.installingExternalVersionId = nil;
+                [strongSelf.tableView reloadData];
                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Install failed"
                                                                                message:error.localizedDescription
                                                                         preferredStyle:UIAlertControllerStyleAlert];

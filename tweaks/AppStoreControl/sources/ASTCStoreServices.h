@@ -25,6 +25,9 @@
 /// Code of errors that stop a version lookup: the store wants an authorization
 /// that cannot be followed safely, or the native request limit was reached.
 static const NSInteger ASTCStoreLookupStoppedErrorCode = 15;
+/// Code of the error reported when a purchase request ended without a response.
+/// The store may still have received the request.
+static const NSInteger ASTCStoreNoResponseErrorCode = 5;
 
 /// Result of Apple's commerce response for one app: every build identifier
 /// Apple still serves, oldest first, plus the metadata of the current build.
@@ -70,15 +73,6 @@ typedef void (^ASTCInstallHandler)(NSError *error);
                                           forAdamID:(NSString *)adamId
                                            bundleID:(NSString *)bundleId
                                          completion:(ASTCInstallHandler)completion;
-
-/// Silent install through appstored's install-apps service (the API App Store
-/// and MDM use for initial content downloads). It takes the item id plus an
-/// explicit external version id, so no purchase sheet should appear.
-- (BOOL)installSilentlyWithInstallApps:(ASTCVersion *)version
-                             forAdamID:(NSString *)adamId
-                              bundleID:(NSString *)bundleId
-                        displayVersion:(NSString *)displayVersion
-                            completion:(ASTCInstallHandler)completion;
 
 /// Ask appstored to download and install the given version.
 - (void)installVersion:(ASTCVersion *)version

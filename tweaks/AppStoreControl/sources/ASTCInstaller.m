@@ -86,33 +86,6 @@
            displayName, version.displayVersion, version.externalVersionId,
            [[ASTCStoreClient sharedInstance] installedVersionForBundleID:product.bundleId] ?: @"unknown");
 
-    __weak typeof(self) weakSelf = self;
-
-    // Strategy 1: appstored install-apps service. Silent by design (it is the
-    // MDM / initial-content-download path).
-    BOOL started = [[ASTCStoreServices sharedInstance] installSilentlyWithInstallApps:version
-                                                                           forAdamID:product.adamId
-                                                                            bundleID:product.bundleId
-                                                                      displayVersion:version.displayVersion
-                                                                          completion:^(NSError *silentError) {
-        ASTCLog(@"silent install request finished: %@", silentError ?: @"accepted");
-    }];
-    if (started) {
-        [self waitForInstalledVersion:version
-                             bundleID:product.bundleId
-                              timeout:120
-                           completion:^(BOOL matched) {
-            if (matched) {
-                if (completion) {
-                    completion(nil);
-                }
-                return;
-            }
-            ASTCLog(@"silent install did not change the build; trying local redownload parameters");
-            [weakSelf installWithLocalRedownloadPath:version product:product completion:completion];
-        }];
-        return;
-    }
     [self installWithLocalRedownloadPath:version product:product completion:completion];
 }
 
@@ -125,24 +98,27 @@
                                                                           forAdamID:product.adamId
                                                                            bundleID:product.bundleId
                                                                          completion:^(NSError *localError) {
-        if (localError) {
+        // Without a response the store may have started the download, so a second
+        // request could download the app twice.
+        BOOL noResponse = [localError.domain isEqualToString:@"to.define.appstorecontrol.store"]
+            && localError.code == ASTCStoreNoResponseErrorCode;
+        if (localError && !noResponse) {
             ASTCLog(@"local redownload install unavailable: %@", localError.localizedDescription);
             [weakSelf installWithPurchasePath:version product:product completion:completion];
             return;
         }
+        if (noResponse) {
+            ASTCLog(@"local redownload install got no response; not sending another request");
+        }
+        if (completion) {
+            completion(nil);
+        }
+        // The download keeps running in App Store. Large apps take a while, and
+        // this result is only logged.
         [weakSelf waitForInstalledVersion:version
                                  bundleID:product.bundleId
-                                  timeout:120
-                               completion:^(BOOL matched) {
-            if (matched) {
-                if (completion) {
-                    completion(nil);
-                }
-                return;
-            }
-            ASTCLog(@"local redownload install did not change the build; falling back to purchase path");
-            [weakSelf installWithPurchasePath:version product:product completion:completion];
-        }];
+                                  timeout:600
+                               completion:nil];
     }];
 }
 

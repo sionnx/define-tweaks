@@ -164,10 +164,19 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 
 #pragma mark - Identifier resolution
 
+/// Shared by every step of one lookup, so a cancel reaches it at any stage.
+@interface ASTCVersionLookup : NSObject
+@property (atomic, assign) BOOL cancelled;
+@end
+
+@implementation ASTCVersionLookup
+@end
+
 /// Resolves identifiers one at a time: the commerce endpoint rate limits
 /// bursts. Implemented as a small state machine so it does not need a recursive block.
 @interface ASTCIdentifierResolver : NSObject
 @property (nonatomic, strong) ASTCProduct *product;
+@property (nonatomic, strong) ASTCVersionLookup *lookup;
 @property (nonatomic, copy) NSString *pricingParameters;
 @property (nonatomic, strong) NSArray<NSString *> *identifiers;
 @property (nonatomic, strong) NSMutableArray<NSString *> *pending;
@@ -199,6 +208,11 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 
 - (void)resolveNext
 {
+    if (self.lookup.cancelled) {
+        ASTCLog(@"version lookup cancelled for %@ after %lu probes", self.product.adamId, (unsigned long)self.index);
+        [self finish];
+        return;
+    }
     if (self.index >= self.pending.count) {
         [self finish];
         return;
@@ -390,6 +404,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 
 @implementation ASTCStoreClient {
     NSMutableSet *_activeResolvers;
+    NSMutableDictionary<NSString *, ASTCVersionLookup *> *_activeLookups;
     NSMutableDictionary<NSString *, NSDictionary *> *_installedInfo;
 }
 
@@ -414,6 +429,44 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 }
 
 #pragma mark - Installed app metadata
+
+static NSString *ASTCProgressSummary(id app, NSString *key)
+{
+    @try {
+        NSProgress *progress = [app valueForKey:key];
+        if (![progress isKindOfClass:[NSProgress class]]) {
+            return @"-";
+        }
+        return [NSString stringWithFormat:@"%.3f(%lld/%lld)", progress.fractionCompleted,
+                progress.completedUnitCount, progress.totalUnitCount];
+    } @catch (__unused NSException *exception) {
+        return @"?";
+    }
+}
+
+/// Logs what appstored reports about a running install, to learn which fields
+/// a one-shot query fills in.
+static void ASTCLogInstallProgress(id app, NSString *bundleId)
+{
+    id phase = nil;
+    id placeholder = nil;
+    id installID = nil;
+    id installError = nil;
+    @try {
+        phase = [app valueForKey:@"progressPhase"];
+        placeholder = [app valueForKey:@"placeholder"];
+        installID = [app valueForKey:@"installID"];
+        installError = [app valueForKey:@"installError"];
+    } @catch (NSException *exception) {
+        ASTCLog(@"install progress for %@: unreadable (%@)", bundleId, exception.reason);
+        return;
+    }
+    ASTCLog(@"install progress for %@: phase=%@ placeholder=%@ installID=%@ progress=%@ download=%@ install=%@ postProcess=%@ error=%@",
+           bundleId, phase, placeholder, installID,
+           ASTCProgressSummary(app, @"progress"), ASTCProgressSummary(app, @"downloadProgress"),
+           ASTCProgressSummary(app, @"installProgress"), ASTCProgressSummary(app, @"postProcessProgress"),
+           installError);
+}
 
 - (NSMutableDictionary<NSString *, NSDictionary *> *)installedInfoCache
 {
@@ -474,6 +527,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
                     continue;
                 }
                 found = YES;
+                ASTCLogInstallProgress(app, bundleId);
                 NSString *version = [app valueForKey:@"bundleShortVersion"];
                 NSNumber *externalId = [app valueForKey:@"storeExternalVersionID"];
                 if ([version isKindOfClass:[NSString class]] && version.length) {
@@ -811,6 +865,16 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 
 #pragma mark - Product + versions
 
+- (void)cancelVersionLookupForAdamID:(NSString *)adamId
+{
+    if (adamId.length == 0) {
+        return;
+    }
+    @synchronized(self) {
+        _activeLookups[adamId].cancelled = YES;
+    }
+}
+
 - (void)fetchProductForAdamID:(NSString *)adamId
                      progress:(ASTCProductProgressHandler)progress
                    completion:(ASTCProductHandler)completion
@@ -820,9 +884,30 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         return;
     }
 
+    ASTCVersionLookup *lookup = [ASTCVersionLookup new];
+    @synchronized(self) {
+        if (!_activeLookups) {
+            _activeLookups = [NSMutableDictionary dictionary];
+        }
+        _activeLookups[adamId] = lookup;
+    }
+    ASTCProductHandler handler = completion;
+    completion = ^(ASTCProduct *product, NSError *error) {
+        @synchronized(self) {
+            if (self->_activeLookups[adamId] == lookup) {
+                [self->_activeLookups removeObjectForKey:adamId];
+            }
+        }
+        handler(product, error);
+    };
+
     [self getLookupJSONWithAdamID:adamId bundleId:nil completion:^(id json, NSError *error) {
         if (error) {
             completion(nil, error);
+            return;
+        }
+        if (lookup.cancelled) {
+            completion(nil, ASTCClientError(10, @"The version lookup was cancelled."));
             return;
         }
         NSDictionary *results = json[@"results"];
@@ -851,12 +936,17 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
             }
             ASTCLog(@"local app state: bundleId=%@ installedVersion=%@ installedExt=%@",
                    product.bundleId, product.installedDisplayVersion, product.installedExternalVersionId);
-            [self fetchVersionsForProduct:product progress:progress completion:completion];
+            if (lookup.cancelled) {
+                completion(product, ASTCClientError(10, @"The version lookup was cancelled."));
+                return;
+            }
+            [self fetchVersionsForProduct:product lookup:lookup progress:progress completion:completion];
         }];
     }];
 }
 
 - (void)fetchVersionsForProduct:(ASTCProduct *)product
+                         lookup:(ASTCVersionLookup *)lookup
                        progress:(ASTCProductProgressHandler)progress
                      completion:(ASTCProductHandler)completion
 {
@@ -903,8 +993,13 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
             completion(product, error ?: ASTCClientError(9, @"Apple returned no version list."));
             return;
         }
+        if (lookup.cancelled) {
+            completion(product, ASTCClientError(10, @"The version lookup was cancelled."));
+            return;
+        }
         [strongSelf resolveIdentifiers:list
                                product:product
+                                lookup:lookup
                      pricingParameters:pricingParameters
                                  cache:cache
                               progress:progress
@@ -914,6 +1009,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
 
 - (void)resolveIdentifiers:(ASTCIdentifierList *)list
                    product:(ASTCProduct *)product
+                    lookup:(ASTCVersionLookup *)lookup
          pricingParameters:(NSString *)pricingParameters
                      cache:(NSMutableDictionary *)cache
                   progress:(ASTCProductProgressHandler)progress
@@ -992,9 +1088,14 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
         }
     }
 
+    NSUInteger cachedCount = 0;
+    for (NSString *identifier in identifiers) {
+        if (isComplete(identifier)) {
+            cachedCount++;
+        }
+    }
     ASTCLog(@"version list for %@: total=%lu cached=%lu probing=%lu pricing=%@",
-           product.adamId, (unsigned long)identifiers.count,
-           (unsigned long)(identifiers.count - pending.count),
+           product.adamId, (unsigned long)identifiers.count, (unsigned long)cachedCount,
            (unsigned long)pending.count, pricingParameters);
 
     if (pending.count == 0) {
@@ -1009,6 +1110,7 @@ static BOOL ASTCIsStoreRefusal(NSError *error)
     ASTCIdentifierResolver *resolver = [ASTCIdentifierResolver new];
     resolver.skipped = [NSMutableArray array];
     resolver.product = product;
+    resolver.lookup = lookup;
     resolver.pricingParameters = pricingParameters;
     resolver.identifiers = identifiers;
     resolver.pending = pending;

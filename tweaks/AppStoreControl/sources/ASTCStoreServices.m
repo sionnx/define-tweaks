@@ -166,7 +166,7 @@ static NSString *ASTCBuildBuyParameters(NSString *adamId,
     // request finishes without any response the observer has to fail.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-        [self finishWithPlist:nil error:ASTCError(5, @"The store returned no version data.")];
+        [self finishWithPlist:nil error:ASTCError(ASTCStoreNoResponseErrorCode, @"The store returned no response.")];
     });
 }
 
@@ -1572,50 +1572,6 @@ static NSString *ASTCBuyParamValue(NSString *buyParams, NSString *field)
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         if (!finished) { ASTCLog(@"nativeBuy: timed out after 90s"); resultError = ASTCError(5, @"The store did not respond to the authorization."); finishOnce(); }
     });
-}
-
-#pragma mark - Silent install (ASDInstallApps)
-
-- (BOOL)installSilentlyWithInstallApps:(ASTCVersion *)version
-                             forAdamID:(NSString *)adamId
-                              bundleID:(NSString *)bundleId
-                        displayVersion:(NSString *)displayVersion
-                            completion:(ASTCInstallHandler)completion
-{
-    Class appClass = NSClassFromString(@"ASDApp");
-    Class installClass = NSClassFromString(@"ASDInstallApps");
-    if (!appClass || !installClass) {
-        return NO;
-    }
-    id app = [[appClass alloc] init];
-    if (!app) {
-        return NO;
-    }
-    @try {
-        [app setValue:bundleId forKey:@"bundleID"];
-        [app setValue:@(adamId.longLongValue) forKey:@"storeItemID"];
-        [app setValue:@(version.externalVersionId.longLongValue) forKey:@"storeExternalVersionID"];
-        if (displayVersion.length) {
-            [app setValue:displayVersion forKey:@"bundleShortVersion"];
-        }
-    } @catch (NSException *exception) {
-        ASTCLog(@"ASDApp configuration failed: %@", exception);
-        return NO;
-    }
-
-    SEL selector = NSSelectorFromString(@"installApp:withCompletionHandler:");
-    if (![installClass respondsToSelector:selector]) {
-        return NO;
-    }
-    ASTCLog(@"ASDInstallApps install: %@ ext=%@", bundleId, version.externalVersionId);
-    void (^handler)(id) = ^(id result) {
-        ASTCLog(@"ASDInstallApps result: %@", result);
-        if (completion) {
-            completion(nil);
-        }
-    };
-    ((void (*)(id, SEL, id, id))objc_msgSend)(installClass, selector, app, handler);
-    return YES;
 }
 
 #pragma mark - Local redownload install

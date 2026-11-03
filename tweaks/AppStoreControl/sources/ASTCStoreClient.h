@@ -33,6 +33,11 @@ static const NSInteger ASTCStoreClientInstallStateErrorCode = 20;
                      progress:(ASTCProductProgressHandler)progress
                    completion:(ASTCProductHandler)completion;
 
+/// Stops the running version lookup of an app: no new store request is sent and
+/// the builds resolved so far are written to the cache. A request already in
+/// flight still finishes.
+- (void)cancelVersionLookupForAdamID:(NSString *)adamId;
+
 /// Resolve the numeric App Store identifier of an installed app.
 - (void)resolveAdamIDForBundleID:(NSString *)bundleId completion:(ASTCAdamIDHandler)completion;
 
