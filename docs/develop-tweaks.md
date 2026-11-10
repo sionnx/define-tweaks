@@ -24,6 +24,12 @@ Each call appends a line to `Library/Logs/<Tweak>.log` in the home directory of 
 2026-11-03 14:22:05.123 [AppStoreControl] [Probe] took 0.42s
 ```
 
+Hooks on hot paths log with `XLogOnce`, which takes the same arguments and writes each distinct tag and message only once per process. Leave addresses, timestamps, and other values that change on every call out of its message, or repeats will not compare equal:
+
+```objc
+XLogOnce(@"UIDevice", @"-model original=%@ mapped=iPad", original);
+```
+
 When the file passes 1 MB, the next launch of the host process renames it to `<Tweak>.log.1`, replacing any earlier copy.
 
 Each line also goes to `os_log`, which still works in processes whose sandbox forbids the file:

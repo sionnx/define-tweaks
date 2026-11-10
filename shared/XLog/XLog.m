@@ -7,6 +7,7 @@
 #if XLOG_ENABLED
 
 #import <fcntl.h>
+#import <os/lock.h>
 #import <os/log.h>
 #import <sys/stat.h>
 #import <sys/time.h>
@@ -63,13 +64,8 @@ static void XLogFormatTimestamp(char *buffer, size_t size)
     snprintf(buffer, size, "%s.%03d", seconds, (int)(now.tv_usec / 1000));
 }
 
-void XLogWrite(NSString *tag, NSString *format, ...)
+static void XLogWriteMessage(NSString *tag, NSString *message)
 {
-    va_list args;
-    va_start(args, format);
-    NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
-    va_end(args);
-
     static os_log_t logHandle;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -86,6 +82,42 @@ void XLogWrite(NSString *tag, NSString *format, ...)
     NSString *line = [NSString stringWithFormat:@"%s [%s] [%@] %@\n", timestamp, XLOG_TWEAK_NAME, tag, message];
     NSData *data = [line dataUsingEncoding:NSUTF8StringEncoding];
     write(fd, data.bytes, data.length);
+}
+
+void XLogWrite(NSString *tag, NSString *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+    XLogWriteMessage(tag, message);
+}
+
+void XLogWriteOnce(NSString *tag, NSString *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+
+    static NSMutableSet<NSString *> *written;
+    static os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
+    NSString *key = [NSString stringWithFormat:@"%@\n%@", tag, message];
+    // The lock covers only the set: writing may re-enter a hooked function
+    // that logs again on the same thread.
+    os_unfair_lock_lock(&lock);
+    if (!written) {
+        written = [NSMutableSet set];
+    }
+    BOOL first = ![written containsObject:key];
+    if (first) {
+        [written addObject:key];
+    }
+    os_unfair_lock_unlock(&lock);
+
+    if (first) {
+        XLogWriteMessage(tag, message);
+    }
 }
 
 #endif

@@ -21,10 +21,18 @@
 
 #define XLog(tag, fmt, ...) XLogWrite(tag, fmt, ##__VA_ARGS__)
 
+/// Like XLog, but writes each distinct tag and message only once per process.
+/// Use it in hooks on hot paths, and keep varying data such as addresses or
+/// timestamps out of the message so repeats compare equal.
+#define XLogOnce(tag, fmt, ...) XLogWriteOnce(tag, fmt, ##__VA_ARGS__)
+
 // Hidden, and C rather than an ObjC class: every tweak compiles its own copy,
 // and tweaks can be injected into the same process.
 __attribute__((visibility("hidden")))
 void XLogWrite(NSString *tag, NSString *format, ...) NS_FORMAT_FUNCTION(2, 3);
+
+__attribute__((visibility("hidden")))
+void XLogWriteOnce(NSString *tag, NSString *format, ...) NS_FORMAT_FUNCTION(2, 3);
 
 /// Absolute path of the log file.
 __attribute__((visibility("hidden")))
@@ -36,5 +44,6 @@ NSString *XLogFilePath(void);
 // computed only for logging do not trip -Wunused-but-set-variable. The
 // compiler drops it, so nothing reaches NSLog.
 #define XLog(tag, fmt, ...) do { if (0) { (void)(tag); NSLog(fmt, ##__VA_ARGS__); } } while (0)
+#define XLogOnce(tag, fmt, ...) XLog(tag, fmt, ##__VA_ARGS__)
 
 #endif

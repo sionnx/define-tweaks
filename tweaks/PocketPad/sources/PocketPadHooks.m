@@ -7,7 +7,6 @@
 #import <sys/sysctl.h>
 #import <sys/utsname.h>
 #import <substrate.h>
-#import <unistd.h>
 
 #import "PocketPadConfig.h"
 #import "XLog.h"
@@ -27,11 +26,15 @@ static PPMGGetStringAnswerFunction PPOriginalMGGetStringAnswer;
 static PPMGGetSInt32AnswerFunction PPOriginalMGGetSInt32Answer;
 static char *PPHardwareModelCString;
 
+// One line without object addresses, so identical answers log identically.
 static NSString *PPDescribeCFValue(CFTypeRef value)
 {
 	if (!value) return @"<nil>";
-	CFStringRef description = CFCopyDescription(value);
-	return (__bridge_transfer NSString *)description;
+	NSString *description = [(__bridge id)value description];
+	NSArray<NSString *> *parts = [description componentsSeparatedByCharactersInSet:
+		NSCharacterSet.whitespaceAndNewlineCharacterSet];
+	parts = [parts filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]];
+	return [parts componentsJoinedByString:@" "];
 }
 
 static NSString *PPStringFromSysctlBuffer(const void *buffer, size_t length)
@@ -44,34 +47,33 @@ static NSString *PPStringFromSysctlBuffer(const void *buffer, size_t length)
 	return value ?: @"<invalid UTF-8>";
 }
 
+// Replaces a successful read with the fake model. A read that failed only
+// because the buffer was too small for the real value is completed as well:
+// callers size the buffer from the fake length returned by the size query.
 static int PPReplaceSysctlResult(const char *source, void *oldp, size_t *oldlenp,
-	size_t capacity, int originalResult)
+	size_t capacity, int originalResult, int originalErrno)
 {
-	if (originalResult != 0) {
-		XLog(@"sysctl", @"%@ original=<read failed errno=%d> mapped=%@ pid=%d",
-			[NSString stringWithUTF8String:source], errno, PPHardwareModel(), getpid());
+	NSString *name = [NSString stringWithUTF8String:source];
+	if (!oldlenp || (originalResult != 0 && (originalErrno != ENOMEM || !oldp))) {
+		XLogOnce(@"sysctl", @"%@ original=<failed errno=%d> mapped=<unchanged>",
+			name, originalErrno);
+		errno = originalErrno;
 		return originalResult;
 	}
 
-	NSString *original = oldp
-		? PPStringFromSysctlBuffer(oldp, *oldlenp)
-		: @"<size query>";
+	NSString *original = !oldp ? @"<size query>"
+		: originalResult != 0 ? @"<buffer too small>"
+		: PPStringFromSysctlBuffer(oldp, *oldlenp);
 	size_t fakeSize = strlen(PPHardwareModelCString) + 1;
-	if (!oldp) {
-		*oldlenp = fakeSize;
-	} else if (capacity < fakeSize) {
-		*oldlenp = fakeSize;
+	*oldlenp = fakeSize;
+	if (oldp && capacity < fakeSize) {
+		XLogOnce(@"sysctl", @"%@ original=%@ mapped=<ENOMEM capacity=%zu>",
+			name, original, capacity);
 		errno = ENOMEM;
-		XLog(@"sysctl", @"%@ original=%@ mapped=%@ capacity=%zu pid=%d",
-			[NSString stringWithUTF8String:source], original, PPHardwareModel(),
-			capacity, getpid());
 		return -1;
-	} else {
-		memcpy(oldp, PPHardwareModelCString, fakeSize);
-		*oldlenp = fakeSize;
 	}
-	XLog(@"sysctl", @"%@ original=%@ mapped=%@ pid=%d",
-		[NSString stringWithUTF8String:source], original, PPHardwareModel(), getpid());
+	if (oldp) memcpy(oldp, PPHardwareModelCString, fakeSize);
+	XLogOnce(@"sysctl", @"%@ original=%@ mapped=%@", name, original, PPHardwareModel());
 	return 0;
 }
 
@@ -85,8 +87,9 @@ static int PPSysctlHook(int *name, u_int namelen, void *oldp, size_t *oldlenp,
 
 	size_t capacity = oldlenp ? *oldlenp : 0;
 	int result = PPOriginalSysctl(name, namelen, oldp, oldlenp, newp, newlen);
+	int originalErrno = errno;
 	const char *source = name[1] == HW_MACHINE ? "hw.machine" : "hw.model";
-	return PPReplaceSysctlResult(source, oldp, oldlenp, capacity, result);
+	return PPReplaceSysctlResult(source, oldp, oldlenp, capacity, result, originalErrno);
 }
 
 static int PPSysctlbynameHook(const char *name, void *oldp, size_t *oldlenp,
@@ -98,7 +101,8 @@ static int PPSysctlbynameHook(const char *name, void *oldp, size_t *oldlenp,
 
 	size_t capacity = oldlenp ? *oldlenp : 0;
 	int result = PPOriginalSysctlbyname(name, oldp, oldlenp, newp, newlen);
-	return PPReplaceSysctlResult(name, oldp, oldlenp, capacity, result);
+	int originalErrno = errno;
+	return PPReplaceSysctlResult(name, oldp, oldlenp, capacity, result, originalErrno);
 }
 
 static int PPUnameHook(struct utsname *value)
@@ -109,12 +113,13 @@ static int PPUnameHook(struct utsname *value)
 	NSString *original = @(value->machine);
 	strncpy(value->machine, PPHardwareModelCString, sizeof(value->machine) - 1);
 	value->machine[sizeof(value->machine) - 1] = '\0';
-	XLog(@"uname", @"machine original=%@ mapped=%@ pid=%d",
-		original, PPHardwareModel(), getpid());
+	XLogOnce(@"uname", @"machine original=%@ mapped=%@", original, PPHardwareModel());
 	return 0;
 }
 
-static CFStringRef PPMobileGestaltStringOverride(CFStringRef question)
+// The single MobileGestalt override table. Every typed accessor below derives
+// its answer from it, so the same question answers the same through each API.
+static CFTypeRef PPMobileGestaltOverride(CFStringRef question)
 {
 	if (!question) return NULL;
 	if (CFEqual(question, CFSTR("ProductType")) ||
@@ -125,31 +130,26 @@ static CFStringRef PPMobileGestaltStringOverride(CFStringRef question)
 	if (CFEqual(question, CFSTR("DeviceClass"))) {
 		return CFSTR("iPad");
 	}
-	return NULL;
-}
-
-static BOOL PPMobileGestaltIntegerOverride(CFStringRef question, SInt32 *value)
-{
-	if (question && CFEqual(question, CFSTR("DeviceClassNumber"))) {
-		*value = 3; // MGDeviceClassiPad
-		return YES;
+	if (CFEqual(question, CFSTR("DeviceClassNumber"))) {
+		static CFNumberRef iPadClass;
+		static dispatch_once_t onceToken;
+		dispatch_once(&onceToken, ^{
+			SInt32 value = 3; // MGDeviceClassiPad
+			iPadClass = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
+		});
+		return iPadClass;
 	}
-	return NO;
+	return NULL;
 }
 
 static CFTypeRef PPMGCopyAnswerHook(CFStringRef question, CFDictionaryRef options)
 {
 	CFTypeRef original = PPOriginalMGCopyAnswer(question, options);
-	CFStringRef mapped = PPMobileGestaltStringOverride(question);
-	if (!mapped) {
-		XLog(@"MobileGestalt", @"MGCopyAnswer %@ original=%@ mapped=<unchanged> pid=%d",
-			PPDescribeCFValue(question), PPDescribeCFValue(original), getpid());
-		return original;
-	}
-
-	XLog(@"MobileGestalt", @"MGCopyAnswer %@ original=%@ mapped=%@ pid=%d",
+	CFTypeRef mapped = PPMobileGestaltOverride(question);
+	XLogOnce(@"MobileGestalt", @"MGCopyAnswer %@ original=%@ mapped=%@",
 		PPDescribeCFValue(question), PPDescribeCFValue(original),
-		PPDescribeCFValue(mapped), getpid());
+		mapped ? PPDescribeCFValue(mapped) : @"<unchanged>");
+	if (!mapped) return original;
 	if (original) CFRelease(original);
 	return CFRetain(mapped);
 }
@@ -157,28 +157,30 @@ static CFTypeRef PPMGCopyAnswerHook(CFStringRef question, CFDictionaryRef option
 static CFStringRef PPMGGetStringAnswerHook(CFStringRef question)
 {
 	CFStringRef original = PPOriginalMGGetStringAnswer(question);
-	CFStringRef mapped = PPMobileGestaltStringOverride(question);
-	if (!mapped) {
-		XLog(@"MobileGestalt", @"MGGetStringAnswer %@ original=%@ mapped=<unchanged> pid=%d",
-			PPDescribeCFValue(question), PPDescribeCFValue(original), getpid());
-		return original;
-	}
-
-	XLog(@"MobileGestalt", @"MGGetStringAnswer %@ original=%@ mapped=%@ pid=%d",
+	CFTypeRef mapped = PPMobileGestaltOverride(question);
+	if (mapped && CFGetTypeID(mapped) != CFStringGetTypeID()) mapped = NULL;
+	XLogOnce(@"MobileGestalt", @"MGGetStringAnswer %@ original=%@ mapped=%@",
 		PPDescribeCFValue(question), PPDescribeCFValue(original),
-		PPDescribeCFValue(mapped), getpid());
+		mapped ? PPDescribeCFValue(mapped) : @"<unchanged>");
+	if (!mapped) return original;
 	if (original) CFRelease(original);
-	return CFRetain(mapped);
+	return (CFStringRef)CFRetain(mapped);
 }
 
 static SInt32 PPMGGetSInt32AnswerHook(CFStringRef question, SInt32 defaultValue)
 {
 	SInt32 original = PPOriginalMGGetSInt32Answer(question, defaultValue);
-	SInt32 mapped = original;
-	bool changed = PPMobileGestaltIntegerOverride(question, &mapped);
-	XLog(@"MobileGestalt", @"MGGetSInt32Answer %@ original=%d mapped=%d changed=%d pid=%d",
-		PPDescribeCFValue(question), (int)original, (int)mapped, changed, getpid());
-	return mapped;
+	CFTypeRef mapped = PPMobileGestaltOverride(question);
+	SInt32 value = original;
+	if (!mapped || CFGetTypeID(mapped) != CFNumberGetTypeID() ||
+		!CFNumberGetValue((CFNumberRef)mapped, kCFNumberSInt32Type, &value)) {
+		XLogOnce(@"MobileGestalt", @"MGGetSInt32Answer %@ original=%d mapped=<unchanged>",
+			PPDescribeCFValue(question), (int)original);
+		return original;
+	}
+	XLogOnce(@"MobileGestalt", @"MGGetSInt32Answer %@ original=%d mapped=%d",
+		PPDescribeCFValue(question), (int)original, (int)value);
+	return value;
 }
 
 static void *PPMobileGestaltSymbol(const char *name)

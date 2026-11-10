@@ -17,13 +17,19 @@ application is known to call. The tweak has no hooks on application classes.
 - MobileGestalt `MGGetStringAnswer`
 - MobileGestalt `MGGetSInt32Answer`
 
-MobileGestalt string queries map `ProductType`, `HWModelStr`, and `ProductName`
-to `iPad19,2`, and `DeviceClass` to `iPad`. The integer query
-`DeviceClassNumber` maps to `3`, the MobileGestalt iPad device class.
+MobileGestalt answers come from one override table, so each question answers
+the same through every accessor: `ProductType`, `HWModelStr`, and `ProductName`
+map to `iPad19,2`, `DeviceClass` to `iPad`, and `DeviceClassNumber` to `3`, the
+MobileGestalt iPad device class.
 
-Each hooked device query is appended to `Library/Logs/PocketPad.log` in the
-host application's home directory. Release builds keep logging enabled so the
-log remains available after the tweak is installed from the package.
+The sysctl hooks report the length of `iPad19,2` to size queries. A later read
+into a buffer of that size fails for the longer real value, so the hooks
+complete such a read with the fake value instead of returning `ENOMEM`.
+
+Each distinct hooked query, with its original and mapped value, is written once
+per process to `Library/Logs/PocketPad.log` in the host application's home
+directory. Release builds keep logging enabled so the log remains available
+after the tweak is installed from the package.
 
 Device identifiers, screen dimensions, system version, camera capabilities,
 and network state remain unchanged.

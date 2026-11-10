@@ -2,7 +2,6 @@
 // Application classes stay outside the hook surface.
 
 #import <UIKit/UIKit.h>
-#import <unistd.h>
 
 #import "PocketPadConfig.h"
 #import "PocketPadHooks.h"
@@ -14,7 +13,7 @@
 {
 	if (!PPShouldApply()) return %orig;
 	NSString *original = %orig;
-	XLog(@"UIDevice", @"-model original=%@ mapped=iPad pid=%d", original, getpid());
+	XLogOnce(@"UIDevice", @"-model original=%@ mapped=iPad", original);
 	return @"iPad";
 }
 
@@ -22,7 +21,7 @@
 {
 	if (!PPShouldApply()) return %orig;
 	NSString *original = %orig;
-	XLog(@"UIDevice", @"-localizedModel original=%@ mapped=iPad pid=%d", original, getpid());
+	XLogOnce(@"UIDevice", @"-localizedModel original=%@ mapped=iPad", original);
 	return @"iPad";
 }
 
@@ -30,8 +29,8 @@
 {
 	if (!PPShouldApply()) return %orig;
 	UIUserInterfaceIdiom original = %orig;
-	XLog(@"UIDevice", @"-userInterfaceIdiom original=%ld mapped=%ld pid=%d",
-		(long)original, (long)UIUserInterfaceIdiomPad, getpid());
+	XLogOnce(@"UIDevice", @"-userInterfaceIdiom original=%ld mapped=%ld",
+		(long)original, (long)UIUserInterfaceIdiomPad);
 	return UIUserInterfaceIdiomPad;
 }
 
@@ -43,8 +42,8 @@
 {
 	if (!PPShouldApply()) return %orig;
 	UIUserInterfaceIdiom original = %orig;
-	XLog(@"UITraitCollection", @"-userInterfaceIdiom original=%ld mapped=%ld pid=%d",
-		(long)original, (long)UIUserInterfaceIdiomPad, getpid());
+	XLogOnce(@"UITraitCollection", @"-userInterfaceIdiom original=%ld mapped=%ld",
+		(long)original, (long)UIUserInterfaceIdiomPad);
 	return UIUserInterfaceIdiomPad;
 }
 
