@@ -33,3 +33,27 @@ log stream --predicate 'subsystem == "to.define.tweaks"'
 ```
 
 Logging is compiled out of `FINALPACKAGE=1` builds. A tweak that needs its log in release builds sets `XLOG_RELEASE = 1` before the include.
+
+## Preferences
+
+Tweaks read their settings through [shared/XPrefs](../shared/XPrefs) only. Do not call `CFPreferences` or `NSUserDefaults` directly from a tweak.
+
+The settings pane writes its domain through cfprefsd, and RootHide stores the file at `<jbroot>/var/mobile/Library/Preferences/<domain>.plist`. Unsandboxed processes such as SpringBoard can read it back through `CFPreferences`. In a sandboxed application the same request resolves to the application's own data container and returns nothing. XPrefs tries `CFPreferences` first and then reads the jbroot plist file.
+
+Include `XPrefs.mk` after `XLog.mk`:
+
+```make
+include ../../shared/XLog/XLog.mk
+include ../../shared/XPrefs/XPrefs.mk
+```
+
+Load the domain once and read the values you need:
+
+```objc
+#import "XPrefs.h"
+
+NSDictionary *prefs = XPrefsLoad(@"to.define.example");
+BOOL enabled = XPrefsBool(prefs, @"Enabled", YES);
+```
+
+Each load logs the source it used (`cfprefs`, `file`, or `none`) and the number of keys. The settings pane keeps writing through the standard `defaults` and `key` specifier properties.

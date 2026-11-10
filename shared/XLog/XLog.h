@@ -32,6 +32,9 @@ NSString *XLogFilePath(void);
 
 #else
 
-#define XLog(tag, fmt, ...) do {} while (0)
+// The dead branch keeps the arguments referenced and format-checked, so values
+// computed only for logging do not trip -Wunused-but-set-variable. The
+// compiler drops it, so nothing reaches NSLog.
+#define XLog(tag, fmt, ...) do { if (0) { (void)(tag); NSLog(fmt, ##__VA_ARGS__); } } while (0)
 
 #endif

@@ -18,6 +18,7 @@ RedTweak_CFLAGS = -fobjc-arc
 RedTweak_FRAMEWORKS = UIKit Foundation
 
 include ../../shared/XLog/XLog.mk
+include ../../shared/XPrefs/XPrefs.mk
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

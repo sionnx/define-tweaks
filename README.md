@@ -20,6 +20,7 @@ Or open [apt.define.to](https://apt.define.to) on your device and tap **Add to S
 |---|---|
 | [DockReel](tweaks/DockReel) | Scrollable dock with more than 4 icons, in paged or free scrolling mode. |
 | [AppStoreControl](tweaks/AppStoreControl) | Browse an app's App Store version history and downgrade to any build Apple still serves. |
+| [PocketPad](tweaks/PocketPad) | Report verified iPhone device APIs as iPad19,2 and log each hooked query. |
 
 ## Repository layout
 

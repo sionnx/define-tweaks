@@ -4,17 +4,17 @@
 #import <Foundation/Foundation.h>
 #import "RedTweak.h"
 #import "XLog.h"
+#import "XPrefs.h"
 
-static CFStringRef const kRTPrefsDomain = CFSTR("to.define.redtweak");
+static NSString *const kRTPrefsDomain = @"to.define.redtweak";
 
-// Switches default to on: a missing or unreadable value counts as enabled.
+// Switches default to on: a missing value counts as enabled.
 // Values are read once at launch; the settings pane tells the user to relaunch.
-static BOOL RTSwitchOn(CFStringRef key)
+static BOOL RTSwitchOn(NSDictionary *prefs, NSString *key)
 {
-    Boolean valid = false;
-    Boolean on = CFPreferencesGetAppBooleanValue(key, kRTPrefsDomain, &valid);
-    XLog(@"Prefs", @"%@=%d valid=%d", (__bridge NSString *)key, on, valid);
-    return !valid || on;
+    BOOL on = XPrefsBool(prefs, key, YES);
+    XLog(@"Prefs", @"%@=%d stored=%d", key, on, prefs[key] != nil);
+    return on;
 }
 
 %ctor {
@@ -22,11 +22,12 @@ static BOOL RTSwitchOn(CFStringRef key)
          NSBundle.mainBundle.bundleIdentifier,
          [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]);
 
-    if (!RTSwitchOn(CFSTR("Enabled"))) {
+    NSDictionary *prefs = XPrefsLoad(kRTPrefsDomain);
+    if (!RTSwitchOn(prefs, @"Enabled")) {
         XLog(@"Load", @"disabled by master switch");
         return;
     }
 
-    if (RTSwitchOn(CFSTR("NoWatermark"))) RTInstallNoWatermark();
-    if (RTSwitchOn(CFSTR("UnlockSave"))) RTInstallUnlockSave();
+    if (RTSwitchOn(prefs, @"NoWatermark")) RTInstallNoWatermark();
+    if (RTSwitchOn(prefs, @"UnlockSave")) RTInstallUnlockSave();
 }
