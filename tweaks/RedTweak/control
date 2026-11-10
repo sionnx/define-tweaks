@@ -1,0 +1,9 @@
+Package: to.define.redtweak
+Name: RedTweak
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Tweaks for Xiaohongshu (RedNote).
+Maintainer: Sion
+Author: Sion
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0), preferenceloader

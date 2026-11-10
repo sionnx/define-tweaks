@@ -15,5 +15,8 @@ node_modules/
 dist/
 .dev.vars
 
+ipas/
+*.app
+
 # depot test fixture debs must be committed
 !depot/test/fixtures/*.deb

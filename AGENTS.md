@@ -9,6 +9,8 @@ When developing a tweak, follow [docs/develop-tweaks.md](docs/develop-tweaks.md)
 
 When releasing a tweak, follow [docs/release-tweaks.md](docs/release-tweaks.md).
 
+No dynamic debugging unless I explicitly ask for it. Do not launch apps on the device, read device logs, or add runtime probes (such as code that dumps a class's methods) to find out how an app behaves. Approval to install a package covers that install only. When a class or method cannot be found, use static analysis (the decrypted binary, through dsh) or ask me.
+
 
 ## Sub Agent
 

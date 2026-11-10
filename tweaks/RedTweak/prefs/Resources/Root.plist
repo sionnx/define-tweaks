@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Quit and reopen Xiaohongshu for changes to take effect.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>to.define.redtweak</string>
+			<key>key</key>
+			<string>Enabled</string>
+			<key>label</key>
+			<string>Enabled</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Features</string>
+			<key>footerText</key>
+			<string>Remove Watermark saves images and videos without the watermark. Unlock Saving lets the save button work on notes whose author turned off downloads.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>to.define.redtweak</string>
+			<key>key</key>
+			<string>NoWatermark</string>
+			<key>label</key>
+			<string>Remove Watermark</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>to.define.redtweak</string>
+			<key>key</key>
+			<string>UnlockSave</string>
+			<key>label</key>
+			<string>Unlock Saving</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>RedTweak</string>
+</dict>
+</plist>
