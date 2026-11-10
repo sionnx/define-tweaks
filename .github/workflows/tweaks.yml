@@ -62,9 +62,16 @@ jobs:
           name=${TAG%@*}
           version=${TAG#*@}
           # Tags use the lowercased tweak name; directory names may use any case
-          dir=$(find tweaks -mindepth 1 -maxdepth 1 -type d | while read -r d; do
-            [[ $(basename "$d" | tr '[:upper:]' '[:lower:]') == "$name" ]] && echo "$d"
-          done)
+          # A plain if: under bash -e, a trailing `[[ ]] && …` that does not
+          # match would fail the step whenever the tweak is not listed last.
+          dir=
+          for d in tweaks/*/; do
+            d=${d%/}
+            if [[ $(basename "$d" | tr '[:upper:]' '[:lower:]') == "$name" ]]; then
+              dir=$d
+              break
+            fi
+          done
           [[ -n $dir ]] || { echo "::error::Tweak directory not found: tweaks/$name"; exit 1; }
 
           control_version=$(sed -n 's/^Version: *//p' "$dir/control")
